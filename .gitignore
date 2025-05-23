@@ -1,0 +1,11 @@
+# Ignore all node_modules folders recursively
+**/node_modules/
+
+# Or explicitly:
+Backend/node_modules/
+Frontend/node_modules/
+
+# Ignore environment files
+.env
+Backend/.env
+Frontend/.env
