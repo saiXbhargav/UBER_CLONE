@@ -14,6 +14,7 @@ const Vehiclepanel = (props) => {
         <h3 className='text-2xl font-bold mb-3'>Choose a Vehicle</h3>
         <div onClick={()=>{
             props.setconfirmridepanel(true);
+            props.createride("car");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           
@@ -30,7 +31,7 @@ const Vehiclepanel = (props) => {
               <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 UberGo <span className="text-gray-500"><i className="ri-user-fill"></i> 4</span>
               </h4>
-              <h2 className="text-xl font-bold text-gray-900">₹125.25</h2>
+              <h2 className="text-xl font-bold text-gray-900">₹{props.fare.car}</h2>
             </div>
             <div className="text-sm text-gray-600">
               <p>2 min away</p>
@@ -43,6 +44,7 @@ const Vehiclepanel = (props) => {
         {/* this is for auto */}
         <div onClick={()=>{
             props.setconfirmridepanel(true);
+            props.createride("auto");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           
@@ -59,7 +61,7 @@ const Vehiclepanel = (props) => {
               <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 Auto <span className="text-gray-500"><i className="ri-user-fill"></i> 3</span>
               </h4>
-              <h2 className="text-xl font-bold text-gray-900">₹75.47</h2>
+              <h2 className="text-xl font-bold text-gray-900">₹{props.fare.auto}</h2>
             </div>
             <div className="text-sm text-gray-600">
               <p>2 min away</p>
@@ -72,6 +74,7 @@ const Vehiclepanel = (props) => {
         {/* this is for Bike */}
         <div onClick={()=>{
             props.setconfirmridepanel(true);
+            props.createride("moto");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           
@@ -88,7 +91,7 @@ const Vehiclepanel = (props) => {
               <h4 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                 Moto <span className="text-gray-500"><i className="ri-user-fill"></i> 1</span>
               </h4>
-              <h2 className="text-xl font-bold text-gray-900">₹23.42</h2>
+              <h2 className="text-xl font-bold text-gray-900">₹{props.fare.moto}</h2>
             </div>
             <div className="text-sm text-gray-600">
               <p>2 min away</p>

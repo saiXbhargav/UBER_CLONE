@@ -14,4 +14,12 @@ router.post('/create',
 )
 
 
+router.get('/get-fare',
+    authMiddleware.authuser,
+    query('pickup').isString().isLength({min: 3}).withMessage('Pickup location is required'),
+    query('destination').isString().isLength({min: 3}).withMessage('Destination location is required'),
+    
+    rideController.getFare
+);
+
 module.exports=router;

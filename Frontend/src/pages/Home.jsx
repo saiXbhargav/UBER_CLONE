@@ -23,6 +23,7 @@ const Home = () => {
   const waitingfordriverref = useRef(null)
   const confirmridepanelref = useRef(null)
   const vehiclefoundref = useRef(null)
+  const [fare, setfare] = useState(0)
   const Submithandler = (e) => {
     e.preventDefault()
     console.log('Form submitted')
@@ -132,9 +133,49 @@ const Home = () => {
     }
   }, [destination, searchType])
 
+  async function findTrip() {
+    if (pickup && destination) {
+      setvehiclepanelopen(true)
+      setpanelopen(false)
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/rides/get-fare`, {
+          params: { pickup, destination },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        console.log("Fare response:", response.data);
+        setfare(response.data);
+      } catch (error) {
+        console.error("Error fetching fare:", error);
+      }
+    } else {
+      alert('Please enter both pickup and destination locations.')
+    }
+  }
+
+  async function createride(vehicleType) {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/rides/create`,
+        { pickup, destination, vehicleType },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          },
+        }
+      );
+      console.log('Ride created successfully:', response.data);
+      setconfirmridepanel(true);
+      setvehiclepanelopen(false);
+    } catch (err) {
+      console.error('Error creating ride:', err);
+    }
+  }
+
   return (
-    <div className="h-screen w-screen relative overflow-hidden bg-gray-100">
-      <header className="absolute top-0 left-0 w-full flex items-center justify-between p-5 bg-white shadow-md z-10">
+    <div className="h-screen w-screen relative bg-gray-100">
+      <header className="absolute top-0 left-0 w-full flex items-center justify-between bg-transparent z-10 px-4 py-2 mb-300">
         <img
           className="w-16"
           src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png"
@@ -142,11 +183,12 @@ const Home = () => {
         />
         <Link
           to="/user/logout"
-          className="h-10 w-10 rounded-full bg-gray-200 shadow-lg flex items-center justify-center hover:bg-gray-300 transition"
+          className="h-10 w-10 rounded-full bg-white/70 backdrop-blur-sm shadow-lg flex items-center justify-center hover:bg-white/90 transition"
         >
           <i className="ri-logout-circle-line text-gray-700 text-xl"></i>
         </Link>
       </header>
+
       <div className="h-screen w-screen">
         <img
           className="h-full w-full object-cover"
@@ -205,7 +247,7 @@ const Home = () => {
               />
             </div>
           </form>
-          <button className="bg-black text-white px-4 py-2 rounded-lg mt-2 mb-4 w-full flex items-center justify-center">
+          <button onClick={findTrip} className="bg-black text-white px-4 py-2 rounded-lg mt-2 mb-4 w-full flex items-center justify-center">
             <p className="font-semibold">Find a trip</p>
             <i className="ri-arrow-right-s-line text-2xl ml-2"></i>
           </button>
@@ -225,7 +267,7 @@ const Home = () => {
         ref={vehiclepanelopenref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 translate-y-full shadow-lg rounded-t-3xl"
       >
-        <Vehiclepanel setconfirmridepanel={setconfirmridepanel} setvehiclepanelopen={setvehiclepanelopen} />
+        <Vehiclepanel createride={createride} fare={fare} setconfirmridepanel={setconfirmridepanel} setvehiclepanelopen={setvehiclepanelopen} />
       </div>
       <div
         ref={confirmridepanelref}

@@ -15,8 +15,7 @@ function getOtp(num) {
 }
 
 
-module.exports.createRide = async ({}) => {
-}
+
 
 
 async function getfare(pickup, destination) {
@@ -58,7 +57,7 @@ async function getfare(pickup, destination) {
     // console.log('Fare calculated:', fare);
     return fare;
 }
-
+module.exports.getfare = getfare;
 
 module.exports.createRide = async ({
     user,pickup,destination,vehicleType
