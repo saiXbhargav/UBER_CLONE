@@ -14,7 +14,7 @@ const Vehiclepanel = (props) => {
         <h3 className='text-2xl font-bold mb-3'>Choose a Vehicle</h3>
         <div onClick={()=>{
             props.setconfirmridepanel(true);
-            props.createride("car");
+            props.selectvehicleType("car");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           
@@ -44,7 +44,7 @@ const Vehiclepanel = (props) => {
         {/* this is for auto */}
         <div onClick={()=>{
             props.setconfirmridepanel(true);
-            props.createride("auto");
+            props.selectvehicleType("auto");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           
@@ -74,7 +74,7 @@ const Vehiclepanel = (props) => {
         {/* this is for Bike */}
         <div onClick={()=>{
             props.setconfirmridepanel(true);
-            props.createride("moto");
+            props.selectvehicleType("moto");
             props.setvehiclepanelopen(false);
         }} className="active:border-black flex mb-2 items-center justify-between gap-4 p-4 rounded-t-lg shadow-lg bg-white border border-gray-200 hover:shadow-xl transition-shadow duration-300">
           

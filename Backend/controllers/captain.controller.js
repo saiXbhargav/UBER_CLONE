@@ -6,6 +6,7 @@ const { validationResult } = require('express-validator');
 
 module.exports.registercaptain = async (req, res, next) => {
     const errors = validationResult(req);
+    // console.log("🚨 Incoming signup body:", req.body);
     console.log("Request body:", req.body);
     if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });

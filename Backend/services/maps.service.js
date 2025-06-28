@@ -1,4 +1,5 @@
 const axios = require('axios');
+const captainmodel = require('../models/captain.model');
 
 module.exports.getAddressCoordinate=async(address)=>{
     const apiKey = process.env.ORS_MAPS_API;
@@ -19,7 +20,18 @@ module.exports.getAddressCoordinate=async(address)=>{
 }
 
 
- 
+ const getCoordinatesFromName = async (place) => {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(place)}&limit=1`;
+    const res = await axios.get(url);
+    if (res.data.features && res.data.features.length > 0) {
+      const [lng, lat] = res.data.features[0].geometry.coordinates;
+      return [lng, lat];
+    } else {
+      throw new Error(`Location not found: ${place}`);
+    }
+  };
+
+  module.exports.getCoordinatesFromName = getCoordinatesFromName;
 
 
 module.exports.getDistanceAndTime = async (origin, destination) => {
@@ -34,16 +46,7 @@ module.exports.getDistanceAndTime = async (origin, destination) => {
 
   const isCoordinates = (str) => /^-?\d+(\.\d+)?,-?\d+(\.\d+)?$/.test(str.trim());
 
-  const getCoordinatesFromName = async (place) => {
-    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(place)}&limit=1`;
-    const res = await axios.get(url);
-    if (res.data.features && res.data.features.length > 0) {
-      const [lon, lat] = res.data.features[0].geometry.coordinates;
-      return [lon, lat];
-    } else {
-      throw new Error(`Location not found: ${place}`);
-    }
-  };
+  
 
   const formatDistance = (meters) => {
     const km = meters / 1000;
@@ -144,3 +147,34 @@ module.exports.getAutoCompleteSuggestions = async (input) => {
     throw error;
   }
 };
+
+
+
+
+
+
+
+
+
+module.exports.getcaptainsintheradius=async (ltd, lng, radius) => {
+  if (!ltd || !lng || !radius) {
+    throw new Error('Latitude, longitude, and radius are required');
+  }
+  //radius is in kilometers
+  const apiKey = process.env.ORS_MAPS_API;
+  if (!apiKey) {
+    throw new Error('ORS API key is missing');
+  }
+  // const url = `https://api.openrouteservice.org/v2/pois?api_key=${apiKey}&point.lat=${ltd}&point.lon=${lng}&radius=${radius}`;
+  const captains=await captainmodel.find({
+    location: {
+      $geoWithin: {
+        $centerSphere: [[lng, ltd], radius / 6378.1]
+      }
+    }
+  });
+  return captains;
+}
+
+
+

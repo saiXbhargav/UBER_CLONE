@@ -1,10 +1,13 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Finishride from '../Components/Finishride';
 import gsap from 'gsap';
 import { useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react'
+
 const Captainriding = () => {
+    const location = useLocation();
+    const ride = location.state?.ride || {};
     const [finisridepanel, setfinishridepanel] = useState(false);
     const Finishridepopupref = useRef(null);
 
@@ -59,7 +62,14 @@ const Captainriding = () => {
 
         {/* Centered row: Distance + Button */}
         <div className="flex flex-1 items-center justify-between rounded-xl px-4">
-            <h4 className="text-lg font-semibold text-Black">4 KM away</h4>
+            <div>
+              <h4 className="text-lg font-semibold text-Black">
+                {ride.user?.fullname?.firstname}'s Ride
+              </h4>
+              <p className="text-sm text-black">
+                {ride.pickup} - {ride.destination}
+              </p>
+            </div>
             <button className="bg-white text-black text-md font-semibold px-5 py-2 rounded-lg shadow-md hover:bg-gray-200 transition">
             Complete Ride
             </button>
@@ -67,7 +77,7 @@ const Captainriding = () => {
     </div>
 
     <div ref={Finishridepopupref}  className="fixed z-10 bottom-0 w-full h-screen bg-white p-5 rounded-lg shadow-lg">
-        <Finishride setfinishridepanel={setfinishridepanel} />
+        <Finishride ride={ride} setfinishridepanel={setfinishridepanel} />
     </div>
 
     </div>

@@ -1,6 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import { UserDatacontext } from '../Context/Usercontext';
+import { UserDataContext } from '../Context/Usercontext';
 import { useNavigate} from 'react-router-dom';
 import axios from 'axios';
 import { useContext } from 'react';
@@ -8,7 +8,7 @@ const UserLogin = () => {
   const [email,setemail] = React.useState("");
   const [password,setpassword] = React.useState("");
   const [userdata,setuserdata] = React.useState({});
-  const {user,setuser}=useContext(UserDatacontext);
+  const {user,setUser}=useContext(UserDataContext);
   const navigate = useNavigate();
 
   const submitHandler = async (e) => {
@@ -22,7 +22,7 @@ const UserLogin = () => {
     if(response.status===200){
       console.log("Login Success:", response.data);
       const data=response.data;
-      setuser(data.user);
+      setUser(data.user);
       localStorage.setItem("token", data.token);
       navigate('/home');
     }

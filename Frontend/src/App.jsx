@@ -6,7 +6,7 @@ import CaptainSignup from './pages/captainsignup.jsx';
 import CaptainLogin from './pages/captainlogin.jsx';
 import Userlogin from './pages/userlogin.jsx';
 import UserSignup from './pages/usersignup.jsx';
-import { UserDatacontext } from './Context/Usercontext.jsx';
+import { UserDataContext } from './Context/Usercontext.jsx';
 import Home from './pages/Home.jsx';
 // import { usecontext } from 'react';
 import Userprotectedwrapper from './pages/userprotectedwrapper.jsx';
@@ -18,8 +18,6 @@ import CaptainLogout from './pages/CaptainLogout.jsx';
 import Riding from './pages/Riding.jsx';
 import Captainriding from './pages/Captainriding.jsx';
 function App() {
-  const ans=useContext(UserDatacontext);
-  console.log(ans);
   return (
     <div>
       <Routes>

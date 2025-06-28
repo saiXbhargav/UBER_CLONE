@@ -61,7 +61,7 @@ const captainSchema = new mongoose.Schema({
     },
 
     location:{
-        la:{
+        ltd:{
             type: Number
             // required: true  
         }
@@ -90,6 +90,6 @@ captainSchema.statics.hashpassword = async function (password) {
     return hashedPassword;
 }
 
-
-const captainmodel = mongoose.model('captain', captainSchema);
+captainSchema.index({ location: '2dsphere' }); // ✅ for geo queries
+const captainmodel = mongoose.model('Captain', captainSchema);
 module.exports = captainmodel;

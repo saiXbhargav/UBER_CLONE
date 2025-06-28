@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Usercontext from '../Context/Usercontext';
-import { UserDatacontext } from '../Context/Usercontext';
+import { UserDataContext } from '../Context/Usercontext';
 import { useContext } from 'react';
 const Usersignup = () => {
     const [email,setemail] = React.useState("");
@@ -13,7 +13,7 @@ const Usersignup = () => {
     const [firstname,setfirstname] = React.useState("");  
     const [lastname,setlastname] = React.useState("");
     const navigate = useNavigate();
-    const {user, setuser} = useContext(UserDatacontext);
+    const {user, setUser} = useContext(UserDataContext);
     const submitHandler = async (e) => {
       e.preventDefault();
 
@@ -31,7 +31,7 @@ const Usersignup = () => {
       if(response.status===201){
         console.log("Registration Success:", response.data);
         const data=response.data;
-        setuser(data.user);
+        setUser(data.user);
         localStorage.setItem("token", data.token);
         navigate('/home');
       }

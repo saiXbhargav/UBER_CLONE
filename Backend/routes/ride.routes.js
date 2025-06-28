@@ -22,4 +22,30 @@ router.get('/get-fare',
     rideController.getFare
 );
 
+router.post('/confirm',
+    
+    authMiddleware.authcaptain,
+    body('rideId').isMongoId().withMessage('Ride ID is required'),
+    
+    rideController.confirmRide
+    // console.log(".confirm ride route hit");
+);
+
+
+router.get('/start-ride',
+    authMiddleware.authcaptain,
+    query('rideId').isMongoId().withMessage('Ride ID is required'),
+    query('otp').isString().isLength({min: 6, max: 6}).withMessage('OTP is required and must be 6 characters long'),
+    
+    rideController.startRide
+);
+
+
+router.post('/end-ride',
+    authMiddleware.authcaptain,
+    body('rideId').isMongoId().withMessage('Ride ID is required'),
+    
+    rideController.endRide
+);
+
 module.exports=router;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef,useContext } from 'react'
 import axios from 'axios'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
@@ -8,7 +8,10 @@ import Vehiclepanel from '../Components/vehiclepanel'
 import Confirmride from '../Components/Confirmride'
 import Lookingfordriver from '../Components/Lookingfordriver'
 import Waitingfordeiver from '../Components/Waitingfordeiver'
+import {SocketContext} from '../Context/SocketContext'
 import { Link } from 'react-router-dom'
+import { UserDataContext } from '../Context/Usercontext'
+import {useNavigate} from 'react-router-dom'
 const Home = () => {
   const [pickup, setpickup] = useState('')
   const [destination, setdestination] = useState('')
@@ -24,6 +27,43 @@ const Home = () => {
   const confirmridepanelref = useRef(null)
   const vehiclefoundref = useRef(null)
   const [fare, setfare] = useState(0)
+  const [vehicleType, setvehicleType] = useState(null)
+  const {socket} = useContext(SocketContext)
+  const { user,setUser } = useContext(UserDataContext)
+  const [ride, setRide] = useState(null)
+  const navigate = useNavigate()
+
+
+    useEffect(() => {
+      console.log("User data:", user, user._id);
+      if (user && user._id) {
+        // console.log("Emitting join with:", user._id);
+        socket.emit("join", { userType: "user", userId: user._id });
+      }
+    }, [user]);
+
+    useEffect(() => {
+  if (!socket) return;
+
+  socket.on('ride-confirmed', (ride) => {
+    console.log("🚀 Ride confirmed event received", ride);
+    setconfirmridepanel(false);
+    setvehiclefound(false);
+    setwaitingfordriver(true);
+    setRide(ride);
+  });
+
+}, [socket]);
+
+  useEffect(() => {
+    if (!socket) return;
+    socket.on('ride-started', (ride) => {
+      console.log("🚀 Ride started event received", ride);
+      setwaitingfordriver(false);
+      navigate('/riding', { state: { ride } });
+    });
+  }, [socket]);
+
   const Submithandler = (e) => {
     e.preventDefault()
     console.log('Form submitted')
@@ -154,7 +194,7 @@ const Home = () => {
     }
   }
 
-  async function createride(vehicleType) {
+  async function createride() {
     try {
       const response = await axios.post(
         `${import.meta.env.VITE_BASE_URL}/rides/create`,
@@ -166,8 +206,8 @@ const Home = () => {
         }
       );
       console.log('Ride created successfully:', response.data);
-      setconfirmridepanel(true);
-      setvehiclepanelopen(false);
+      // setconfirmridepanel(true);
+      // setvehiclepanelopen(false);
     } catch (err) {
       console.error('Error creating ride:', err);
     }
@@ -267,25 +307,27 @@ const Home = () => {
         ref={vehiclepanelopenref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 translate-y-full shadow-lg rounded-t-3xl"
       >
-        <Vehiclepanel createride={createride} fare={fare} setconfirmridepanel={setconfirmridepanel} setvehiclepanelopen={setvehiclepanelopen} />
+        <Vehiclepanel selectvehicleType={setvehicleType} fare={fare} setconfirmridepanel={setconfirmridepanel} setvehiclepanelopen={setvehiclepanelopen} />
       </div>
       <div
         ref={confirmridepanelref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 translate-y-full shadow-lg rounded-t-3xl"
       >
-        <Confirmride setconfirmridepanel={setconfirmridepanel} setvehiclefound={setvehiclefound} />
+        <Confirmride createride={createride}
+        pickup={pickup} destination={destination} fare={fare} vehicleType={vehicleType}
+        setconfirmridepanel={setconfirmridepanel} setvehiclefound={setvehiclefound} />
       </div>
       <div
         ref={vehiclefoundref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 translate-y-full shadow-lg rounded-t-3xl"
       >
-        <Lookingfordriver setvehiclefound={setvehiclefound} />
+        <Lookingfordriver pickup={pickup} destination={destination} fare={fare} vehicleType={vehicleType} setvehiclefound={setvehiclefound} />
       </div>
       <div
         ref={waitingfordriverref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 shadow-lg rounded-t-3xl"
       >
-        <Waitingfordeiver setwaitingfordriver={setwaitingfordriver} />
+        <Waitingfordeiver setwaitingfordriver={setwaitingfordriver} ride={ride} />
       </div>
     </div>
   );

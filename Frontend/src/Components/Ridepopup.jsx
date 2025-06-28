@@ -34,10 +34,14 @@ const Ridepopup = (props) => {
             src="https://pngimg.com/d/face_PNG11760.png"
             alt="person-image"
           />
-          <h4 className="text-xl font-semibold text-gray-800">Sarthak</h4>
+          <h4 className="text-xl font-semibold text-gray-800">
+            {props.ride?.user?.fullname?.firstname}
+            {props.ride?.user?.fullname?.lastname ? " " + props.ride.user.fullname.lastname : ""}
+          </h4>
+
         </div>
         <div className='text-right'>
-          <h2 className='font-bold text-xl text-Black'>₹295.20</h2>
+          <h2 className='font-bold text-xl text-Black'>₹{props.ride?.fare}</h2>
           <h4 className='text-gray-500 text-sm'>📍 2.2 KM</h4>
         </div>
       </div>
@@ -49,7 +53,7 @@ const Ridepopup = (props) => {
           <div>
             <h5 className='text-sm font-sans text-gray-500'>Pickup</h5>
             <h4 className='font-semibold text-lg'>562/11-A</h4>
-            <p className='text-gray-500'>Kankariya Talab, Ahmedabad</p>
+            <p className='text-gray-500'>{props.ride?.pickup}</p>
           </div>
         </div>
 
@@ -58,7 +62,7 @@ const Ridepopup = (props) => {
           <div>
             <h5 className='text-sm font-sans text-gray-500'>Dropoff</h5>
             <h4 className='font-semibold text-lg'>562/11-A</h4>
-            <p className='text-gray-500'>Kankariya Talab, Ahmedabad</p>
+            <p className='text-gray-500'>{props.ride?.destination}</p>
           </div>
         </div>
       </div>
@@ -77,6 +81,7 @@ const Ridepopup = (props) => {
         </button>
         <button
           onClick={() => {
+            props.confirmride();
             props.setridepopuppanel(false);
             props.setconfirmridepopuppanel(true);
           }}

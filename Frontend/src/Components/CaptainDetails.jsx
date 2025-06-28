@@ -1,6 +1,8 @@
 import React from 'react'
-
+import {useContext} from 'react'
+import {CaptainDataContext} from '../Context/CaptainContext'
 const CaptainDetails = () => {
+  const {captain} = useContext(CaptainDataContext);
   return (
     <div>
         {/* Bottom Section */}
@@ -14,7 +16,14 @@ const CaptainDetails = () => {
                   src="https://pngimg.com/d/face_PNG11760.png"
                   alt="person-image"
                 />
-                <h4 className="text-xl font-semibold">Sarthak</h4>
+                {captain?.fullname ? (
+  <h4 className="text-xl font-semibold capitalize">
+    {captain.fullname.firstname} {captain.fullname.lastname}
+  </h4>
+) : (
+  <h4 className="text-xl font-semibold capitalize">Loading...</h4>
+)}
+
               </div>
 
               {/* Right: Earnings */}

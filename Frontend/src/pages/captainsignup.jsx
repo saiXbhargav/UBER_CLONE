@@ -31,7 +31,7 @@ const captainsignup = () => {
         color: color,
         plate: plate,
         vehicleType: vehicleType,
-        capacity: capacity
+        capacity: Number(capacity)
       }
       };
       

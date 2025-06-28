@@ -1,12 +1,35 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 const Confirmridepopup = (props) => {
     const [Otp,setoptp]=useState("");
-    const submithandler = (e) => {
+    const navigate= useNavigate();
+    const submithandler =async (e) => {
         e.preventDefault();
         console.log("Form submitted");
-        props.setconfirmridepopuppanel(false);
-        props.setridepopuppanel(false);
+        
+        const response = await axios.get(`${import.meta.env.VITE_BASE_URL}/rides/start-ride`, {
+  params: {
+    rideId: props.ride._id,
+    otp: Otp
+  },
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem('captainToken')}`
+  }
+});
+
+        console.log("Response:", response);
+        if (response.status === 200) {
+            console.log("Ride started successfully");
+            props.setconfirmridepopuppanel(false);
+            props.setridepopuppanel(false);
+            navigate('/captain-riding', { state: { ride: props.ride } });
+            // Optionally, you can navigate to a different page or show a success message
+        } else {
+            console.error("Failed to start ride:", response.data);
+            // Optionally, you can show an error message to the user
+        }
     }
   return (
     <div className='w-full  px-4 py-6 bg-[#f9f9f9] rounded-t-2xl shadow-lg animate-slide-up'>
@@ -34,10 +57,10 @@ const Confirmridepopup = (props) => {
             src="https://pngimg.com/d/face_PNG11760.png"
             alt="person-image"
           />
-          <h4 className="text-xl font-semibold text-gray-800">Sarthak</h4>
+          <h4 className="text-xl font-semibold text-gray-800 capitalize">{props.ride?.user?.fullname?.firstname}</h4>
         </div>
         <div className='text-right'>
-          <h2 className='font-bold text-xl text-Black'>₹295.20</h2>
+          <h2 className='font-bold text-xl text-Black'>₹{props.ride?.fare}</h2>
           <h4 className='text-gray-500 text-sm'>📍 2.2 KM</h4>
         </div>
       </div>
@@ -49,7 +72,7 @@ const Confirmridepopup = (props) => {
           <div>
             <h5 className='text-sm font-sans text-gray-500'>Pickup</h5>
             <h4 className='font-semibold text-lg'>562/11-A</h4>
-            <p className='text-gray-500'>Kankariya Talab, Ahmedabad</p>
+            <p className='text-gray-500'>{props.ride?.pickup}</p>
           </div>
         </div>
 
@@ -58,7 +81,7 @@ const Confirmridepopup = (props) => {
           <div>
             <h5 className='text-sm font-sans text-gray-500'>Dropoff</h5>
             <h4 className='font-semibold text-lg'>562/11-A</h4>
-            <p className='text-gray-500'>Kankariya Talab, Ahmedabad</p>
+            <p className='text-gray-500'>{props.ride?.destination}</p>
           </div>
         </div>
       </div>
@@ -68,10 +91,7 @@ const Confirmridepopup = (props) => {
       {/* Action Buttons */}
       <div className='flex justify-center mt-6 px-4'>
             <form
-                onSubmit={(e) => {
-                e.preventDefault();
-                submithandler(e);
-                }}
+                onSubmit={submithandler}
                 className='w-full max-w-md flex flex-col gap-4'
             >
                 {/* OTP Input */}
@@ -96,12 +116,11 @@ const Confirmridepopup = (props) => {
                 </button>
 
                 {/* Confirm Pickup Link */}
-                <Link
-                    to='/captain-riding'
+                <button
                     className='w-1/2 bg-black hover:bg-gray-900 text-white font-semibold py-3 rounded-lg text-center transition duration-300 shadow flex items-center justify-center'
                 >
                     Confirm Pickup
-                </Link>
+                </button>
                 </div>
             </form>
         </div>

@@ -5,13 +5,17 @@ import App from './App.jsx'
 import { BrowserRouter } from 'react-router-dom'
 import Usercontext from './Context/Usercontext.jsx'
 import CaptainContext from './Context/CaptainContext.jsx'
+import SocketProvider from './Context/SocketContext.jsx'
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <CaptainContext>
       <Usercontext>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <SocketProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </SocketProvider>
       </Usercontext>
     </CaptainContext>
   </StrictMode>

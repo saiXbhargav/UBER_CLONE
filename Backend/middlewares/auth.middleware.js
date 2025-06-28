@@ -31,6 +31,7 @@ module.exports.authuser = async (req, res, next) => {
 };
 
 module.exports.authcaptain = async (req, res, next) => {
+    //  console.log(".confirm ride route hit");
     const token = req.cookies.token || req.headers['authorization']?.split(' ')[1]; // Split "Bearer <token>" if present
 
     if (!token) {

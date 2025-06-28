@@ -22,6 +22,7 @@ export const CaptainContext = ({ children }) => {
             const response = await axios.get("/api/captain/profile", {
                 headers: { Authorization: `Bearer ${token}` }
             });
+            console.log("Captain profile:", response.data);
             setCaptain(response.data);
             setError(null);
         } catch (err) {
@@ -37,6 +38,7 @@ export const CaptainContext = ({ children }) => {
         try {
             const response = await axios.post("/api/captain/login", credentials);
             localStorage.setItem("captainToken", response.data.token);
+            console.log("Captain token:", response.data.token);
             setCaptain(response.data.captain);
             setError(null);
             return true;
