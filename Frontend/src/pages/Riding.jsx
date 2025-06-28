@@ -5,6 +5,7 @@ import {useEffect} from 'react';
 import {SocketContext} from '../Context/SocketContext';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Livetracking from '../Components/Livetracking';
 const Riding = () => {
   const location = useLocation();
   const ride  = location.state?.ride ; // Get ride data from state if available
@@ -28,11 +29,12 @@ const Riding = () => {
         </Link>
 
         {/* Background Image */}
-        <img
+        {/* <img
           className="h-full w-full object-cover"
           src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
           alt="Uber"
-        />
+        /> */}
+        <Livetracking />
       </div>
 
       {/* Bottom Section */}

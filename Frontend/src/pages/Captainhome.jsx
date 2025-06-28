@@ -13,6 +13,7 @@ import { CaptainDataContext } from '../Context/CaptainContext'
 import { useContext } from 'react'
 import { useEffect } from 'react'
 import axios from 'axios'
+import Livetracking from '../Components/Livetracking'
 const Captainhome = () => {
   const [ridepopuppanel, setridepopuppanel] = useState(false);
   const Ridepopupref = useRef(null);
@@ -123,11 +124,12 @@ const Captainhome = () => {
        </div>
 
         {/* Background Image */}
-        <img
+        {/* <img
           className="h-full w-full object-cover"
           src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
           alt="Uber"
-        />
+        /> */}
+        <Livetracking />
       </div>
       <div>
         <CaptainDetails />

@@ -4,6 +4,7 @@ import Finishride from '../Components/Finishride';
 import gsap from 'gsap';
 import { useRef, useState } from 'react';
 import { useGSAP } from '@gsap/react'
+import Livetracking from '../Components/Livetracking';
 
 const Captainriding = () => {
     const location = useLocation();
@@ -44,11 +45,12 @@ const Captainriding = () => {
         </Link>
 
         {/* Background Image */}
-        <img
+        {/* <img
           className="h-full w-full object-cover"
           src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
           alt="Uber ride"
-        />
+        /> */}
+        <Livetracking />
       </div>
 
       {/* Bottom Panel */}

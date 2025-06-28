@@ -12,6 +12,7 @@ import {SocketContext} from '../Context/SocketContext'
 import { Link } from 'react-router-dom'
 import { UserDataContext } from '../Context/Usercontext'
 import {useNavigate} from 'react-router-dom'
+import Livetracking from '../Components/Livetracking'
 const Home = () => {
   const [pickup, setpickup] = useState('')
   const [destination, setdestination] = useState('')
@@ -103,7 +104,7 @@ const Home = () => {
   useGSAP(function () {
     if (confirmridepanel) {
       gsap.to(confirmridepanelref.current, {
-        transform: 'translateY(0%)',
+        transform: 'translateY(-5%)',
         duration: 1,
       })
     } else {
@@ -229,12 +230,15 @@ const Home = () => {
         </Link>
       </header>
 
-      <div className="h-screen w-screen">
-        <img
-          className="h-full w-full object-cover"
-          src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
-          alt="Uber"
-        />
+      {/* <div className="h-screen w-screen relative">
+  <Livetracking />
+  <div className="absolute top-0 left-0 z-10 p-4 text-white">
+    <h1 className="text-2xl font-bold">Welcome to Your Ride</h1>
+    <p>Tracking your current location...</p>
+  </div>
+</div> */}
+      <div className="absolute inset-0 z-0">
+        <Livetracking />
       </div>
       <div className="absolute flex flex-col top-0 justify-end w-full h-screen">
         <div className="h-[30%] p-5 bg-white shadow-lg rounded-t-3xl relative">
