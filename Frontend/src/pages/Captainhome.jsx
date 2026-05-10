@@ -18,10 +18,36 @@ const Captainhome = () => {
   const [ridepopuppanel, setridepopuppanel] = useState(false);
   const Ridepopupref = useRef(null);
   const [confirmridepopuppanel, setconfirmridepopuppanel] = useState(false);
+  const [isConfirmPopupCollapsed, setIsConfirmPopupCollapsed] = useState(false);
   const ConfirmRidepopupref = useRef(null);
   const { socket } = useContext(SocketContext)
   const { captain, setCaptain } = useContext(CaptainDataContext)
   const [ride, setRide] = useState(null);
+  const [routePolyline, setRoutePolyline] = useState(null);
+  const [captainLocation, setCaptainLocation] = useState(null);
+
+  useEffect(() => {
+    if (ride && ride.pickup && captainLocation) {
+      const originStr = `${captainLocation.lng},${captainLocation.ltd}`;
+      axios.get(`${import.meta.env.VITE_BASE_URL}/maps/get-distance-time`, {
+          params: { origin: originStr, destination: ride.pickup },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('captainToken')}`
+          }
+        })
+        .then(response => {
+          if (response.data && response.data.polyline) {
+            setRoutePolyline(response.data.polyline);
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching route for captain:", error);
+        });
+    } else {
+        setRoutePolyline(null);
+    }
+  }, [ride, captainLocation]);
+
   // const [confirmride, setconfirmride] = useState(null);
   async function confirmride() {
   try {
@@ -65,6 +91,7 @@ const Captainhome = () => {
           ltd: position.coords.latitude,
           lng: position.coords.longitude,
         };
+        setCaptainLocation(location);
         // console.log("Sending location update:", location);
         console.log("Captain ID:", captain._id , "Location:", location);
         socket.emit("update-location-captain", { userId: captain._id, location });
@@ -99,18 +126,25 @@ const Captainhome = () => {
   }, [ridepopuppanel])
   useGSAP(function () {
     if (confirmridepopuppanel) {
-      gsap.to(ConfirmRidepopupref.current, {
-        transform: "translateY(0%)",
-        duration: 1,
-      })
+      if (isConfirmPopupCollapsed) {
+        gsap.to(ConfirmRidepopupref.current, {
+          transform: "translateY(calc(100% - 100px))",
+          duration: 0.5,
+        })
+      } else {
+        gsap.to(ConfirmRidepopupref.current, {
+          transform: "translateY(0%)",
+          duration: 0.5,
+        })
+      }
     }
     else {
       gsap.to(ConfirmRidepopupref.current, {
         transform: "translateY(100%)",
-        duration: 1,
+        duration: 0.5,
       })
     }
-  }, [confirmridepopuppanel])
+  }, [confirmridepopuppanel, isConfirmPopupCollapsed])
   return (
     <div className="h-screen flex flex-col items-center">
       {/* Top Section */}
@@ -129,16 +163,22 @@ const Captainhome = () => {
           src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
           alt="Uber"
         /> */}
-        <Livetracking />
+        <Livetracking routePolyline={routePolyline} />
       </div>
       <div>
         <CaptainDetails />
       </div>
-      <div ref={Ridepopupref}  className="fixed z-10 bottom-0 w-full  bg-white p-5 rounded-lg shadow-lg">
+      <div ref={Ridepopupref}  className="fixed z-10 bottom-0 w-full bg-white p-5 rounded-t-3xl shadow-lg translate-y-full">
         <Ridepopup ride={ride} setridepopuppanel={setridepopuppanel} setconfirmridepopuppanel={setconfirmridepopuppanel} confirmride={confirmride} />
       </div>
-      <div ref={ConfirmRidepopupref}  className="fixed z-10 bottom-0 w-full h-screen bg-white p-5 rounded-lg shadow-lg">
-        <ConfirmRidepopup ride={ride} setconfirmridepopuppanel={setconfirmridepopuppanel} setridepopuppanel={setridepopuppanel} />
+      <div ref={ConfirmRidepopupref}  className="fixed z-10 bottom-0 w-full bg-white p-5 rounded-t-3xl shadow-lg translate-y-full">
+        <ConfirmRidepopup 
+          ride={ride} 
+          setconfirmridepopuppanel={setconfirmridepopuppanel} 
+          setridepopuppanel={setridepopuppanel} 
+          isConfirmPopupCollapsed={isConfirmPopupCollapsed}
+          setIsConfirmPopupCollapsed={setIsConfirmPopupCollapsed}
+        />
       </div>
     </div>
   )

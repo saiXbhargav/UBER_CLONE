@@ -90,7 +90,7 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -107,20 +107,39 @@ L.Icon.Default.mergeOptions({
 });
 
 // Optional: component to center the map dynamically
-const RecenterMap = ({ lat, lng }) => {
+const RecenterMap = ({ lat, lng, routePolyline }) => {
   const map = useMap();
   useEffect(() => {
-    map.setView([lat, lng]);
-  }, [lat, lng, map]);
+    if (routePolyline && routePolyline.length > 0) {
+      const bounds = L.latLngBounds(routePolyline);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      map.setView([lat, lng]);
+    }
+  }, [lat, lng, routePolyline, map]);
   return null;
 };
 
 const center = {
-  lat: 0,
-  lng: 0,
+  lat: 28.6139,
+  lng: 77.2090,
 };
 
-const Livetracking = () => {
+const pickupIcon = L.divIcon({
+  html: '<i class="ri-map-pin-user-fill" style="color: #10b981; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);"></i>',
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const destinationIcon = L.divIcon({
+  html: '<i class="ri-map-pin-2-fill" style="color: #ef4444; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);"></i>',
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const Livetracking = ({ routePolyline }) => {
   const [currentPosition, setCurrentPosition] = useState(center);
 
   useEffect(() => {
@@ -153,10 +172,27 @@ const Livetracking = () => {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
         />
-        <Marker position={currentPosition}>
-          <Popup>You are here</Popup>
-        </Marker>
-        <RecenterMap lat={currentPosition.lat} lng={currentPosition.lng} />
+        
+        {/* Only show current position marker if there is no active route */}
+        {(!routePolyline || routePolyline.length === 0) && (
+          <Marker position={currentPosition}>
+            <Popup>You are here</Popup>
+          </Marker>
+        )}
+
+        {/* Show route polyline and custom pickup/destination markers when route is active */}
+        {routePolyline && routePolyline.length > 0 && (
+          <>
+            <Polyline positions={routePolyline} color="#111827" weight={6} opacity={0.8} />
+            <Marker position={routePolyline[0]} icon={pickupIcon}>
+              <Popup>Pickup Location</Popup>
+            </Marker>
+            <Marker position={routePolyline[routePolyline.length - 1]} icon={destinationIcon}>
+              <Popup>Destination</Popup>
+            </Marker>
+          </>
+        )}
+        <RecenterMap lat={currentPosition.lat} lng={currentPosition.lng} routePolyline={routePolyline} />
       </MapContainer>
     </div>
   );

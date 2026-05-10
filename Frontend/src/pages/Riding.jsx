@@ -1,7 +1,7 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { useLocation } from 'react-router-dom';
-import {useEffect} from 'react';
+import { useEffect, useState } from 'react';
 import {SocketContext} from '../Context/SocketContext';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,6 +11,30 @@ const Riding = () => {
   const ride  = location.state?.ride ; // Get ride data from state if available
   const { socket } = useContext(SocketContext);
   const navigate = useNavigate();
+  const [routePolyline, setRoutePolyline] = useState(null);
+
+  useEffect(() => {
+    if (ride && ride.pickup && ride.destination) {
+      import('axios').then((axiosModule) => {
+        const axios = axiosModule.default;
+        axios.get(`${import.meta.env.VITE_BASE_URL}/maps/get-distance-time`, {
+          params: { origin: ride.pickup, destination: ride.destination },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        })
+        .then(response => {
+          if (response.data && response.data.polyline) {
+            setRoutePolyline(response.data.polyline);
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching route for riding:", error);
+        });
+      });
+    }
+  }, [ride]);
+
   useEffect(() => {
     socket.on('ride-ended', (data) => {
       console.log('Ride ended:', data);
@@ -20,25 +44,25 @@ const Riding = () => {
   }, [socket]);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col relative">
       {/* Top Section */}
-      <div className="relative h-1/2 w-full overflow-hidden">
+      <div className="h-screen w-full overflow-hidden absolute top-0 left-0">
         {/* Home Button */}
-        <Link to="/home" className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center">
-          <i className="ri-home-6-fill text-xl text-black" />
+        <Link to="/home" className="absolute top-4 right-4 z-10 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center hover:bg-gray-100 transition">
+          <i className="ri-home-6-fill text-xl text-gray-800" />
         </Link>
 
-        {/* Background Image */}
-        {/* <img
-          className="h-full w-full object-cover"
-          src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
-          alt="Uber"
-        /> */}
-        <Livetracking />
+        {/* Livetracking Map */}
+        <Livetracking routePolyline={routePolyline} />
       </div>
 
-      {/* Bottom Section */}
-      <div className="h-1/2 p-4 space-y-4 bg-gray-50">
+      {/* Bottom Section (Floating Sheet) */}
+      <div className="absolute bottom-0 w-full p-6 space-y-5 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] z-10 animate-slide-up">
+        {/* Drag Handle */}
+        <div className='flex justify-center mb-2'>
+          <div className="w-16 h-1.5 bg-gray-300 rounded-full"></div>
+        </div>
+
         {/* Driver & Car Info */}
         <div className="flex items-center justify-between gap-4">
           <img className="h-20 w-20 object-contain" src="https://mobile-content.uber.com/launch-experience/ride.png" alt="Car" />

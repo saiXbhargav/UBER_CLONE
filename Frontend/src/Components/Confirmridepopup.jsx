@@ -38,11 +38,11 @@ const Confirmridepopup = (props) => {
       <div className='w-full flex justify-center mb-4'>
         <h5
           onClick={() => {
-            
+            props.setIsConfirmPopupCollapsed(prev => !prev);
           }}
           className='text-3xl text-gray-400 hover:text-black cursor-pointer transition-all duration-300'
         >
-          <i className="ri-arrow-down-wide-fill"></i>
+          <i className={props.isConfirmPopupCollapsed ? "ri-arrow-up-wide-fill" : "ri-arrow-down-wide-fill"}></i>
         </h5>
       </div>
 

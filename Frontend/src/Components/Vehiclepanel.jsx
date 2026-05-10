@@ -4,14 +4,16 @@ const Vehiclepanel = (props) => {
   return (
     <div>
       
-        <div className='flex items-center justify-center'>
-          <h5 onClick={()=>{
-            props.setvehiclepanelopen(false);
-          }} className='text-2xl font-semibold text-gray-300'>
-            <i className="ri-arrow-down-wide-fill"></i>
-          </h5>
+        <div className='flex items-center justify-center mb-4'>
+          <div 
+            onClick={() => { props.setvehiclepanelopen(false); }}
+            className="w-16 h-1.5 bg-gray-300 rounded-full cursor-pointer hover:bg-gray-400 transition"
+          ></div>
         </div>
-        <h3 className='text-2xl font-bold mb-3'>Choose a Vehicle</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className='text-2xl font-bold text-gray-800 tracking-tight'>Choose a Vehicle</h3>
+          <i onClick={() => { props.setvehiclepanelopen(false); }} className="ri-close-line text-2xl text-gray-500 cursor-pointer hover:text-gray-800 transition"></i>
+        </div>
         <div onClick={()=>{
             props.setconfirmridepanel(true);
             props.selectvehicleType("car");
@@ -50,8 +52,8 @@ const Vehiclepanel = (props) => {
           
           {/* auto Image */}
           <img
-            src="https://www.uber-assets.com/image/upload/f_auto,q_auto:eco,c_fill,h_368,w_552/v1648431773/assets/1d/db8c56-0204-4ce4-81ce-56a11a07fe98/original/Uber_Auto_558x372_pixels_Desktop.png"
-            alt="uber"
+            src="https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/v1.1/TukTuk_Green_v1.png"
+            alt="uber-auto"
             className="h-16 w-16 rounded-sm border-2 border-white object-cover"
           />
           
@@ -80,9 +82,9 @@ const Vehiclepanel = (props) => {
           
           {/* Bike Image */}
           <img
-            src="https://www.uber-assets.com/image/upload/f_auto,q_auto:eco,c_fill,h_368,w_552/v1649231091/assets/2c/7fa194-c954-49b2-9c6d-a3b8601370f5/original/Uber_Moto_Orange_312x208_pixels_Mobile.png"
-            alt="uber"
-            className="h-16 w-16  border-2 border-white  object-cover"
+            src="https://d1a3f4spazzrp4.cloudfront.net/car-types/haloProductImages/Regular/MotorcycleOrange-249-0.png"
+            alt="uber moto"
+            className="h-16 w-16  border-2 border-white  object-contain"
           />
           
           {/* Ride Info */}

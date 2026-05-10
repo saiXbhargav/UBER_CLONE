@@ -55,3 +55,35 @@ module.exports.authcaptain = async (req, res, next) => {
         return res.status(401).json({ message: 'Unauthorized3: Invalid token', error: err.message });
     }
 }
+
+module.exports.authUserOrCaptain = async (req, res, next) => {
+    const token = req.cookies.token || req.headers['authorization']?.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ message: 'Unauthorized1: No token provided' });
+    }
+    const isblacklisted = await blacklisttokenmodel.findOne({ token });
+    if (isblacklisted) {
+        return res.status(401).json({ message: 'Unauthorized2: Token is blacklisted' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        
+        const user = await usermodel.findById(decoded._id);
+        if (user) {
+            req.user = user;
+            return next();
+        }
+
+        const captain = await captainmodel.findById(decoded._id);
+        if (captain) {
+            req.captain = captain;
+            return next();
+        }
+
+        return res.status(401).json({ message: 'Unauthorized2: User or Captain not found' });
+    } catch (err) {
+        return res.status(401).json({ message: 'Unauthorized3: Invalid token', error: err.message });
+    }
+};

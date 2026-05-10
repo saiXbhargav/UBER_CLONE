@@ -11,12 +11,12 @@ const Locationsearchpanel = (props) => {
   } = props
 
   return (
-    <div className='mt-10'>
+    <div className='mt-2 px-2'>
       {
         suggestions.map((address, idx) => (
           <div
             key={idx}
-            className='p-5 flex items-start gap-4 border-2 border-gray-50 rounded-xl mx-1 my-2 active:border-black cursor-pointer'
+            className='p-4 flex items-center gap-4 rounded-2xl mx-1 my-2 hover:bg-gray-100 active:bg-gray-200 transition-colors cursor-pointer border border-transparent hover:border-gray-200'
             onClick={() => {
               const selectedLocation = address.name || address // fallback if it's a string
               if (searchType === 'pickup') {
@@ -28,10 +28,10 @@ const Locationsearchpanel = (props) => {
             //   setvehiclepanelopen(true)
             }}
           >
-            <div className='bg-[#eee] flex items-center justify-center h-10 w-10 rounded-full shrink-0'>
+            <div className='bg-gray-200 text-gray-700 flex items-center justify-center h-12 w-12 rounded-full shrink-0'>
               <i className="ri-map-pin-fill text-xl"></i>
             </div>
-            <h4 className='text-wrap break-words font-medium'>
+            <h4 className='text-wrap break-words font-medium text-gray-800 text-lg'>
               {address.name || JSON.stringify(address)}
             </h4>
           </div>

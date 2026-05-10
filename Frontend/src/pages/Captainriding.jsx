@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import Finishride from '../Components/Finishride';
 import gsap from 'gsap';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useGSAP } from '@gsap/react'
 import Livetracking from '../Components/Livetracking';
 
@@ -11,6 +11,29 @@ const Captainriding = () => {
     const ride = location.state?.ride || {};
     const [finisridepanel, setfinishridepanel] = useState(false);
     const Finishridepopupref = useRef(null);
+    const [routePolyline, setRoutePolyline] = useState(null);
+
+    useEffect(() => {
+        if (ride && ride.pickup && ride.destination) {
+            import('axios').then((axiosModule) => {
+                const axios = axiosModule.default;
+                axios.get(`${import.meta.env.VITE_BASE_URL}/maps/get-distance-time`, {
+                    params: { origin: ride.pickup, destination: ride.destination },
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('captainToken')}`
+                    }
+                })
+                .then(response => {
+                    if (response.data && response.data.polyline) {
+                        setRoutePolyline(response.data.polyline);
+                    }
+                })
+                .catch(error => {
+                    console.error("Error fetching route for captain riding:", error);
+                });
+            });
+        }
+    }, [ride]);
 
     useGSAP(function () {
         if (finisridepanel) {
@@ -28,9 +51,9 @@ const Captainriding = () => {
     }, [finisridepanel])
 
   return (
-    <div className="h-screen flex flex-col bg-white">
-      {/* Top Section */}
-      <div className="relative h-[80%] w-full overflow-hidden">
+    <div className="h-screen flex flex-col relative bg-white">
+      {/* Top Section (Full Screen Map) */}
+      <div className="h-screen w-full overflow-hidden absolute top-0 left-0">
         {/* Uber Logo and Logout */}
         <img
           className="w-16 absolute left-5 top-5 z-10 drop-shadow"
@@ -44,26 +67,21 @@ const Captainriding = () => {
           <i className="ri-logout-circle-line text-xl text-gray-700"></i>
         </Link>
 
-        {/* Background Image */}
-        {/* <img
-          className="h-full w-full object-cover"
-          src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
-          alt="Uber ride"
-        /> */}
-        <Livetracking />
+        {/* Livetracking Map */}
+        <Livetracking routePolyline={routePolyline} />
       </div>
 
-      {/* Bottom Panel */}
-    <div className="bg-gray-100 rounded-t-3xl w-full h-[20%] p-4 shadow-inner flex flex-col" onClick={()=>{
+      {/* Bottom Panel (Floating Sheet) */}
+      <div className="absolute bottom-0 w-full p-6 bg-white rounded-t-3xl shadow-[0_-10px_40px_rgba(0,0,0,0.1)] flex flex-col z-10 animate-slide-up" onClick={()=>{
         setfinishridepanel(!finisridepanel);
-    }}>
-        {/* Arrow at the top */}
-        <div className="flex justify-center text-gray-400 text-2xl mb-2">
-            <i className="ri-arrow-up-wide-fill"></i>
+      }}>
+        {/* Drag Handle */}
+        <div className="flex justify-center mb-2">
+            <div className="w-16 h-1.5 bg-gray-300 rounded-full"></div>
         </div>
 
         {/* Centered row: Distance + Button */}
-        <div className="flex flex-1 items-center justify-between rounded-xl px-4">
+        <div className="flex flex-1 items-center justify-between mt-2">
             <div>
               <h4 className="text-lg font-semibold text-Black">
                 {ride.user?.fullname?.firstname}'s Ride

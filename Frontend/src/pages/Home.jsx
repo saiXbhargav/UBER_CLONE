@@ -32,6 +32,7 @@ const Home = () => {
   const {socket} = useContext(SocketContext)
   const { user,setUser } = useContext(UserDataContext)
   const [ride, setRide] = useState(null)
+  const [routePolyline, setRoutePolyline] = useState(null)
   const navigate = useNavigate()
 
 
@@ -95,7 +96,7 @@ const Home = () => {
       })
     } else {
       gsap.to(vehiclepanelopenref.current, {
-        transform: 'translateY(100%)',
+        transform: 'translateY(120%)',
         duration: 1,
       })
     }
@@ -104,12 +105,12 @@ const Home = () => {
   useGSAP(function () {
     if (confirmridepanel) {
       gsap.to(confirmridepanelref.current, {
-        transform: 'translateY(-5%)',
+        transform: 'translateY(0%)',
         duration: 1,
       })
     } else {
       gsap.to(confirmridepanelref.current, {
-        transform: 'translateY(100%)',
+        transform: 'translateY(120%)',
         duration: 1,
       })
     }
@@ -123,7 +124,7 @@ const Home = () => {
       })
     } else {
       gsap.to(vehiclefoundref.current, {
-        transform: 'translateY(100%)',
+        transform: 'translateY(120%)',
         duration: 1,
       })
     }
@@ -137,7 +138,7 @@ const Home = () => {
       })
     } else {
       gsap.to(waitingfordriverref.current, {
-        transform: 'translateY(100%)',
+        transform: 'translateY(120%)',
         duration: 1,
       })
     }
@@ -187,6 +188,18 @@ const Home = () => {
         });
         console.log("Fare response:", response.data);
         setfare(response.data);
+
+        // Fetch route polyline
+        const routeResponse = await axios.get(`${import.meta.env.VITE_BASE_URL}/maps/get-distance-time`, {
+          params: { origin: pickup, destination: destination },
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+        console.log("Route response:", routeResponse.data);
+        if (routeResponse.data && routeResponse.data.polyline) {
+          setRoutePolyline(routeResponse.data.polyline);
+        }
       } catch (error) {
         console.error("Error fetching fare:", error);
       }
@@ -231,33 +244,39 @@ const Home = () => {
       </header>
 
       {/* <div className="h-screen w-screen relative">
-  <Livetracking />
+  <Livetracking routePolyline={routePolyline} />
   <div className="absolute top-0 left-0 z-10 p-4 text-white">
     <h1 className="text-2xl font-bold">Welcome to Your Ride</h1>
     <p>Tracking your current location...</p>
   </div>
 </div> */}
       <div className="absolute inset-0 z-0">
-        <Livetracking />
+        <Livetracking routePolyline={routePolyline} />
       </div>
-      <div className="absolute flex flex-col top-0 justify-end w-full h-screen">
-        <div className="h-[30%] p-5 bg-white shadow-lg rounded-t-3xl relative">
+      <div className="absolute flex flex-col top-0 justify-end w-full h-screen pointer-events-none">
+        <div className="h-auto p-5 bg-white shadow-2xl rounded-t-3xl relative pointer-events-auto flex flex-col justify-between">
+          {/* Drag Handle */}
+          <div 
+            onClick={() => setpanelopen(!panelopen)}
+            className="w-16 h-1.5 bg-gray-300 rounded-full mx-auto mb-2 cursor-pointer hover:bg-gray-400 transition"
+          ></div>
+          
           <h4
             onClick={() => {
               setpanelopen(!panelopen);
             }}
-            className="absolute right-5 top-5 text-3xl text-gray-900 cursor-pointer hover:text-gray-700 transition"
+            className="absolute right-5 top-5 text-2xl text-gray-400 cursor-pointer hover:text-gray-700 transition"
           >
-            <i className="ri-expand-up-down-line"></i>
+            {panelopen ? <i className="ri-arrow-down-wide-line"></i> : <i className="ri-arrow-up-wide-line"></i>}
           </h4>
-          <h3 className="text-2xl font-semibold text-gray-800">Find a trip</h3>
-          <form onSubmit={Submithandler} className="gap-4 mt-4">
+          <h3 className="text-2xl font-bold text-gray-800 tracking-tight">Find a trip</h3>
+          <form onSubmit={Submithandler} className="gap-4 mt-2">
             <div className="flex justify-center items-center gap-4 relative">
-              <i className="ri-flight-takeoff-line absolute left-4 text-gray-500 mt-3"></i>
+              <i className="ri-map-pin-2-fill absolute left-4 text-gray-400 text-lg"></i>
               <input
                 type="text"
                 placeholder="Add a pick-up location"
-                className="bg-gray-100 px-12 py-2 rounded-lg w-full mt-4 placeholder:text-base focus:outline-none focus:ring-2 focus:ring-gray-300"
+                className="bg-gray-100 px-12 py-3 rounded-xl w-full placeholder:text-gray-500 font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-black transition-all"
                 value={pickup}
                 onClick={() => {
                   setSearchType("pickup");
@@ -271,12 +290,12 @@ const Home = () => {
                 }}
               />
             </div>
-            <div className="flex justify-center items-center gap-4 relative">
-              <i className="ri-flight-land-line absolute left-4 text-gray-500 mt-3"></i>
+            <div className="flex justify-center items-center gap-4 relative mt-3">
+              <i className="ri-square-fill absolute left-4 text-black text-lg"></i>
               <input
                 type="text"
                 placeholder="Enter your destination"
-                className="bg-gray-100 px-12 py-2 rounded-lg w-full mt-4 placeholder:text-base focus:outline-none focus:ring-2 focus:ring-gray-300"
+                className="bg-gray-100 px-12 py-3 rounded-xl w-full placeholder:text-gray-500 font-medium text-gray-800 focus:outline-none focus:ring-2 focus:ring-black transition-all"
                 value={destination}
                 onClick={() => {
                   setSearchType("destination");
@@ -291,12 +310,12 @@ const Home = () => {
               />
             </div>
           </form>
-          <button onClick={findTrip} className="bg-black text-white px-4 py-2 rounded-lg mt-2 mb-4 w-full flex items-center justify-center">
-            <p className="font-semibold">Find a trip</p>
-            <i className="ri-arrow-right-s-line text-2xl ml-2"></i>
+          <button onClick={findTrip} className="bg-black hover:bg-gray-800 transition-colors text-white px-4 py-3 rounded-xl mt-4 w-full flex items-center justify-center shadow-lg">
+            <p className="font-bold text-lg">Find a trip</p>
+            <i className="ri-arrow-right-line text-xl ml-2"></i>
           </button>
         </div>
-        <div ref={panelref} className="h-[70%] bg-white  ">
+        <div ref={panelref} className="h-[70%] bg-white pointer-events-auto">
           <Locationsearchpanel
             setpanelopen={setpanelopen}
             setvehiclepanelopen={setvehiclepanelopen}
@@ -331,7 +350,7 @@ const Home = () => {
         ref={waitingfordriverref}
         className="fixed z-10 bottom-0 w-full bg-white p-5 shadow-lg rounded-t-3xl"
       >
-        <Waitingfordeiver setwaitingfordriver={setwaitingfordriver} ride={ride} />
+        <Waitingfordeiver setwaitingfordriver={setwaitingfordriver} ride={ride} vehicleType={vehicleType} />
       </div>
     </div>
   );

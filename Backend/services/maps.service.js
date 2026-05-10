@@ -104,9 +104,13 @@ module.exports.getDistanceAndTime = async (origin, destination) => {
 
     if (response.data?.features?.length > 0) {
       const summary = response.data.features[0].properties.summary;
+      const geometry = response.data.features[0].geometry.coordinates; // ORS returns [lng, lat] arrays
+      // Convert to [lat, lng] for Leaflet
+      const polyline = geometry.map(coord => [coord[1], coord[0]]);
       return {
         distance: formatDistance(summary.distance),
-        duration: formatDuration(summary.duration)
+        duration: formatDuration(summary.duration),
+        polyline: polyline
       };
     } else {
       throw new Error('No route found in ORS response');
