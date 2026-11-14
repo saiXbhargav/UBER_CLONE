@@ -1,14 +1,43 @@
-# UBER Backend API Documentation
+# RideX Backend API Documentation
 
 ## Overview
 
-This document provides comprehensive documentation for the UBER Backend API. The API allows users and captains to register, authenticate, manage profiles, create rides, and interact with mapping services.
+This document provides comprehensive documentation for the RideX Backend API. The API allows users and captains to register, authenticate, manage profiles, create rides, and interact with mapping services.
+
+## Setup
+
+```bash
+npm install
+npm run dev     # node --watch server.js
+npm test        # unit tests (node:test, no extra deps)
+```
+
+### Environment variables (`Backend/.env`)
+
+| Variable | Required | Description |
+|---|---|---|
+| `PORT` | no | Port to listen on (default `3000`) |
+| `DB_CONNECT` | yes | MongoDB connection string (MongoDB Atlas free tier works) |
+| `JWT_SECRET` | yes | Long random string used to sign tokens |
+| `CLIENT_URL` | recommended | Allowed frontend origin(s), comma-separated, e.g. `http://localhost:5173,https://your-app.vercel.app`. If unset, every origin is allowed (fine for local dev only). |
+| `ORS_MAPS_API` | no | Free [openrouteservice](https://openrouteservice.org) key (no credit card). Used for routing and autocomplete when set. |
+
+All map services are free. Without `ORS_MAPS_API` the API falls back to
+[Photon](https://photon.komoot.io) for geocoding and suggestions and the public
+[OSRM](https://project-osrm.org) server for routes. Results are cached in memory for 10 minutes.
 
 ## Base URL
 
 ```
 http://localhost:3000
 ```
+
+`GET /health` returns `{ "status": "ok", "uptime": <seconds> }` for uptime checks.
+
+## Errors
+
+Every error response is JSON with a `message` field. Validation errors also include an `errors` array.
+Business-rule conflicts (ride already taken, wrong status, already rated) return `409`.
 
 ## Authentication
 
@@ -36,7 +65,10 @@ Authorization: Bearer <your_jwt_token>
   - [Get Suggestions](#mapsget-suggestions)
 - [Rides Endpoints](#rides-endpoints)
   - [Create Ride](#ridescreate)
-  - [Get Fare](#ridesget-fare)
+  - [Get Fare](#ridesget-fare-endpoint)
+  - [Ride lifecycle](#ride-lifecycle)
+- [Captain dashboard](#captain-dashboard)
+- [WebSocket Events](#websocket-events)
 
 ---
 
@@ -800,100 +832,121 @@ GET /rides/get-fare?pickup=1600+Amphitheatre+Parkway,+Mountain+View,+CA&destinat
 
 ```json
 {
-  "auto": 30.50,
-  "car": 45.75,
-  "moto": 25.00
+  "fares": { "auto": 72, "car": 113, "moto": 50 },
+  "distance": { "text": "4.21 km", "value": 4210 },
+  "duration": { "text": "6 min", "value": 372 },
+  "polyline": [[28.6317, 77.2193], [28.6315, 77.2196]]
 }
 ```
+
+`polyline` is a list of `[lat, lng]` points, ready for Leaflet.
 
 ### Error Responses
 
 **400 Bad Request:**
 ```json
-{
-  "errors": [
-    {
-      "msg": "Pickup address must be at least 3 characters long",
-      "param": "pickup",
-      "location": "query"
-    }
-  ]
-}
+{ "message": "Pickup location is required", "errors": [ { "msg": "...", "path": "pickup", "location": "query" } ] }
 ```
 
 **401 Unauthorized:**
 ```json
-{
-  "message": "Unauthorized"
-}
+{ "message": "Authentication required" }
 ```
 
-**500 Internal Server Error:**
+**502 Bad Gateway:**
 ```json
-{
-  "message": "Failed to calculate fare"
-}
+{ "message": "Could not find a route between these locations" }
 ```
+
+---
+
+## Ride lifecycle
+
+```
+pending ──accept──▶ accepted ──OTP──▶ on-going ──end──▶ completed
+   │                   │
+   └──cancel/timeout───┴──cancel──▶ canceled
+```
+
+A pending request that no captain accepts within **90 seconds** is canceled automatically (`cancelledBy: "system"`).
+
+| Method & path | Who | Body / query | Result |
+|---|---|---|---|
+| `POST /rides/create` | user | `{ pickup, destination, vehicleType: "car" \| "auto" \| "moto" }` | `201` ride (no OTP). `409` if the user already has an active ride. Nearby online captains with that vehicle type (within 5 km) get a `new-ride` event. |
+| `POST /rides/confirm` | captain | `{ rideId }` | Ride with user and captain populated. Atomic, so only the first captain wins; others get `409`. |
+| `POST /rides/start` | captain | `{ rideId, otp }` | Ride becomes `on-going`. `400 Invalid OTP` on a mismatch. Rate limited to 10 per 5 minutes. |
+| `POST /rides/end` | captain | `{ rideId }` | Ride becomes `completed`. |
+| `POST /rides/cancel` | user or captain | `{ rideId, reason? }` | A user can cancel `pending`/`accepted` rides; a captain can cancel `accepted` rides. |
+| `POST /rides/rate` | user | `{ rideId, score: 1-5, comment? }` | Rates a completed ride once and updates the captain's average. |
+| `GET /rides/active` | user or captain | - | `{ ride }` or `{ ride: null }`. The OTP is included only for the user. |
+| `GET /rides/history` | user or captain | `?page=1&limit=10` | `{ rides, page, total, pages }`, newest first. |
+
+## Captain dashboard
+
+| Method & path | Body | Result |
+|---|---|---|
+| `GET /captains/stats` | - | `{ today: { earnings, rides }, total: { earnings, rides, distanceKm }, rating: { average, count }, status }` |
+| `PATCH /captains/status` | `{ status: "active" \| "inactive" }` | `{ captain }`. Only `active` captains receive ride requests. |
 
 ---
 
 ## WebSocket Events
 
-This API also supports real-time communication through WebSocket connections for live updates on rides and location tracking.
+Real-time ride updates and live captain location use Socket.IO on the same base URL.
 
 ### Connection
 
-Connect to the WebSocket server at the same base URL:
+The connection must carry the same JWT used for HTTP requests. Connections without a valid token are rejected.
 
 ```javascript
-const socket = io('http://localhost:3000');
+const socket = io('http://localhost:3000', { auth: { token } });
 ```
 
-### Events
+The server puts each socket in a private room (`user:<id>` or `captain:<id>`) based on the token, so clients never send their own ID.
 
-#### `join`
-Join a room with user/captain identification.
+### Client → server
 
-**Payload:**
-```json
-{
-  "userId": "60d0fe4f5311236168a109ca",
-  "userType": "user" // or "captain"
-}
-```
+| Event | Who | Payload |
+|---|---|---|
+| `update-location-captain` | captain | `{ location: { ltd, lng } }`. Saved as a GeoJSON point and forwarded to the rider during an active ride. |
+| `join` | anyone | Ignored (kept for older clients). |
 
-#### `update-location-captain`
-Update captain's real-time location.
+### Server → client
 
-**Payload:**
-```json
-{
-  "userId": "60d0fe4f5311236168a109cb",
-  "location": {
-    "ltd": 37.4224764,
-    "lng": -122.0842499
-  }
-}
-```
+| Event | Sent to | Payload |
+|---|---|---|
+| `new-ride` | nearby captains | Ride with user populated (no OTP) |
+| `ride-unavailable` | captains who saw a request | `{ rideId }`: another captain took it, or it was canceled or timed out |
+| `ride-confirmed` | user | Ride with captain populated, **including the OTP** |
+| `ride-started` | user | Ride |
+| `ride-ended` | user | Ride |
+| `ride-canceled` | the other party | `{ rideId, by: "user" \| "captain" }` |
+| `ride-timeout` | user | `{ rideId }`: no captain accepted within 90 s |
+| `captain-location` | user | `{ rideId, lat, lng }` |
 
 ---
 
 ## Status Codes
 
-The API uses the following HTTP status codes:
-
 - `200 OK` - Request successful
 - `201 Created` - Resource created successfully
-- `400 Bad Request` - Invalid request data
-- `401 Unauthorized` - Authentication required or failed
+- `400 Bad Request` - Invalid request data or wrong OTP
+- `401 Unauthorized` - Missing, invalid, expired or logged-out token
+- `403 Forbidden` - The ride belongs to someone else
 - `404 Not Found` - Resource not found
-- `500 Internal Server Error` - Server error
+- `409 Conflict` - Ride state does not allow this action, or a duplicate account
+- `429 Too Many Requests` - Rate limit hit
+- `502 Bad Gateway` - The map provider could not find a route
+- `500 Internal Server Error` - Unexpected server error
 
 ---
 
 ## Rate Limiting
 
-The API may implement rate limiting. If you exceed the rate limit, you'll receive a `429 Too Many Requests` response.
+- Login and register (users and captains): 20 requests per 15 minutes per IP
+- `POST /rides/start` (OTP check): 10 requests per 5 minutes per IP
+
+Limited responses return `429` with `{ "message": "..." }` and standard `RateLimit` headers.
 
 ---
 

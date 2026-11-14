@@ -1,6 +1,6 @@
-# 🚗 UBER Clone - Frontend
+# 🚗 RideX - Frontend
 
-A modern, responsive UBER clone built with React, Vite, and Tailwind CSS. This application provides a complete ride-sharing experience for both users and captains (drivers) with real-time features.
+RideX is a modern, responsive ride-hailing app built with React, Vite, and Tailwind CSS. This application provides a complete ride-sharing experience for both users and captains (drivers) with real-time features.
 
 ## 🚀 Features
 
