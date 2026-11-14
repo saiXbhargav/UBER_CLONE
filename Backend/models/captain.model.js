@@ -18,8 +18,9 @@ const captainSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
+        trim: true,
         minlength: [5, 'Email must be at least 5 characters long'],
-        match: [/^|S+@\S+.\S+$/, 'Please enter a valid email address']
+        match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email address']
     },
     password: {
         type: String,
@@ -29,17 +30,21 @@ const captainSchema = new mongoose.Schema({
     socketId: {
         type: String
     },
-    status :{
+    status: {
         type: String,
         enum: ['active', 'inactive'],
-        default: 'active'
+        // Drivers start offline and must go online from the app to receive requests.
+        default: 'inactive'
     },
-
+    // Suspended by an admin: cannot log in, connect or receive rides.
+    blocked: {
+        type: Boolean,
+        default: false
+    },
     vehicle: {
         color: {
             type: String,
             required: true
-            // minlength: [3, 'Color must be at least 3 characters long']
         },
         plate: {
             type: String,
@@ -55,41 +60,40 @@ const captainSchema = new mongoose.Schema({
         vehicleType: {
             type: String,
             required: true,
-            enum: ['car', 'motorcycle', 'auto'],
-            default: 'motorcycle'
+            enum: ['car', 'auto', 'moto']
         }
     },
-
-    location:{
-        ltd:{
-            type: Number
-            // required: true  
+    // GeoJSON point: coordinates are [lng, lat]
+    location: {
+        type: {
+            type: String,
+            enum: ['Point'],
+        },
+        coordinates: {
+            type: [Number],
+            default: undefined
         }
-        ,lng:{
-            type: Number
-            // required: true  
-        }
+    },
+    rating: {
+        average: { type: Number, default: 0 },
+        count: { type: Number, default: 0 }
     }
+}, { timestamps: true });
 
-})
-
-captainSchema.methods.generateAuthToken = async function () {
-    const token = jwt.sign({ _id: this._id }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    return token;   
-}
+captainSchema.methods.generateAuthToken = function () {
+    return jwt.sign({ _id: this._id, role: 'captain' }, process.env.JWT_SECRET, { expiresIn: '24h' });
+};
 
 captainSchema.methods.comparepassword = async function (password) {
-    const isMatch = await bcrypt.compare(password, this.password);
-    return isMatch;
-}
-
+    return bcrypt.compare(password, this.password);
+};
 
 captainSchema.statics.hashpassword = async function (password) {
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    return hashedPassword;
-}
+    return bcrypt.hash(password, salt);
+};
 
-captainSchema.index({ location: '2dsphere' }); // ✅ for geo queries
-const captainmodel = mongoose.model('Captain', captainSchema);
-module.exports = captainmodel;
+// 2dsphere indexes skip documents without a location, so captains who never shared one are simply not matched.
+captainSchema.index({ location: '2dsphere' });
+
+module.exports = mongoose.model('Captain', captainSchema);
