@@ -1,31 +1,51 @@
-
-import React, { createContext, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { io } from 'socket.io-client';
+import { getToken } from '../lib/auth';
 
 export const SocketContext = createContext();
 
-const socket = io(`${import.meta.env.VITE_BASE_URL}`); // Replace with your server URL
+// One shared connection. It only connects after a protected page has a valid token,
+// and the server verifies that token during the handshake.
+const socket = io(import.meta.env.VITE_BASE_URL, {
+  autoConnect: false,
+  transports: ['websocket', 'polling'],
+});
 
 const SocketProvider = ({ children }) => {
-    useEffect(() => {
-        // Basic connection logic
-        socket.on('connect', () => {
-            console.log('Connected to server');
-        });
+  const connectSocket = useCallback((role) => {
+    const token = getToken(role);
+    if (!token) return;
+    if (socket.auth?.token === token && (socket.connected || socket.active)) return;
+    if (socket.connected || socket.active) socket.disconnect();
+    socket.auth = { token };
+    socket.connect();
+  }, []);
 
-        socket.on('disconnect', () => {
-            console.log('Disconnected from server');
-        });
+  const disconnectSocket = useCallback(() => {
+    socket.auth = {};
+    socket.disconnect();
+  }, []);
 
-    }, []);
+  useEffect(() => {
+    const onError = (err) => console.warn('Socket connection failed:', err.message);
+    socket.on('connect_error', onError);
+    return () => socket.off('connect_error', onError);
+  }, []);
 
+  return (
+    <SocketContext.Provider value={{ socket, connectSocket, disconnectSocket }}>
+      {children}
+    </SocketContext.Provider>
+  );
+};
 
-
-    return (
-        <SocketContext.Provider value={{ socket }}>
-            {children}
-        </SocketContext.Provider>
-    );
+/** Subscribe to a socket event for the lifetime of the component. */
+export const useSocketEvent = (event, handler) => {
+  const { socket: s } = useContext(SocketContext);
+  useEffect(() => {
+    s.on(event, handler);
+    return () => s.off(event, handler);
+  }, [s, event, handler]);
 };
 
 export default SocketProvider;

@@ -1,187 +1,273 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import CaptainDetails from '../Components/CaptainDetails'
-import 'remixicon/fonts/remixicon.css'
-import { useGSAP } from '@gsap/react'
-import gsap from 'gsap'
-import { useRef } from 'react'
-import { useState } from 'react'
-import Ridepopup from '../Components/Ridepopup'
-import ConfirmRidepopup from '../Components/Confirmridepopup'
-import { SocketContext } from '../Context/SocketContext'
-import { CaptainDataContext } from '../Context/CaptainContext'
-import { useContext } from 'react'
-import { useEffect } from 'react'
-import axios from 'axios'
-import Livetracking from '../Components/Livetracking'
+import React, { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import MapLayout from '../Components/common/MapLayout';
+import Navbar from '../Components/common/Navbar';
+import Livetracking from '../Components/Livetracking';
+import Avatar from '../Components/common/Avatar';
+import RouteSummary from '../Components/common/RouteSummary';
+import { Spinner } from '../Components/common/Spinner';
+import CaptainSummary from '../Components/captain/CaptainSummary';
+import RideRequestCard from '../Components/captain/RideRequestCard';
+import { CaptainDataContext } from '../Context/CaptainContext';
+import { useSocketEvent } from '../Context/SocketContext';
+import { useToast } from '../Context/ToastContext';
+import useCaptainLocation from '../hooks/useCaptainLocation';
+import { api, getErrorMessage } from '../lib/api';
+import { formatMoney, fullName } from '../lib/format';
+import { directionsUrl } from '../lib/navigation';
+import ChatSheet, { ChatButton } from '../Components/common/ChatSheet';
+import useRideChat from '../hooks/useRideChat';
+
 const Captainhome = () => {
-  const [ridepopuppanel, setridepopuppanel] = useState(false);
-  const Ridepopupref = useRef(null);
-  const [confirmridepopuppanel, setconfirmridepopuppanel] = useState(false);
-  const [isConfirmPopupCollapsed, setIsConfirmPopupCollapsed] = useState(false);
-  const ConfirmRidepopupref = useRef(null);
-  const { socket } = useContext(SocketContext)
-  const { captain, setCaptain } = useContext(CaptainDataContext)
-  const [ride, setRide] = useState(null);
-  const [routePolyline, setRoutePolyline] = useState(null);
-  const [captainLocation, setCaptainLocation] = useState(null);
+  const { captain, setCaptain } = useContext(CaptainDataContext);
+  const toast = useToast();
+  const navigate = useNavigate();
+
+  const [stats, setStats] = useState(null);
+  const [requests, setRequests] = useState([]);
+  const [activeRide, setActiveRide] = useState(null);
+  const [route, setRoute] = useState(null);
+  const [otp, setOtp] = useState('');
+  const [busy, setBusy] = useState(null); // which action is in flight
+  const [loading, setLoading] = useState(true);
+  const chat = useRideChat(activeRide?._id, 'captain');
+
+  const activeRideRef = useRef(null);
+  activeRideRef.current = activeRide;
+
+  const online = captain?.status === 'active';
+  const position = useCaptainLocation(online || !!activeRide);
+
+  const loadStats = useCallback(() => {
+    api('captain')
+      .get('/captains/stats')
+      .then(setStats)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
-    if (ride && ride.pickup && captainLocation) {
-      const originStr = `${captainLocation.lng},${captainLocation.ltd}`;
-      axios.get(`${import.meta.env.VITE_BASE_URL}/maps/get-distance-time`, {
-          params: { origin: originStr, destination: ride.pickup },
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('captainToken')}`
-          }
-        })
-        .then(response => {
-          if (response.data && response.data.polyline) {
-            setRoutePolyline(response.data.polyline);
-          }
-        })
-        .catch(error => {
-          console.error("Error fetching route for captain:", error);
-        });
-    } else {
-        setRoutePolyline(null);
-    }
-  }, [ride, captainLocation]);
+    loadStats();
+    api('captain')
+      .get('/rides/active')
+      .then(({ ride }) => {
+        if (ride?.status === 'on-going') navigate('/captain-riding', { replace: true, state: { ride } });
+        else if (ride) setActiveRide(ride);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [loadStats, navigate]);
 
-  // const [confirmride, setconfirmride] = useState(null);
-  async function confirmride() {
-  try {
-    const response = await axios.post(
-      `${import.meta.env.VITE_BASE_URL}/rides/confirm`,
-      {
-        rideId: ride._id,
-        captainId: captain._id
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("captainToken")}`,
+  // Route from the driver to the pickup, fetched once per accepted ride.
+  const routedFor = useRef(null);
+  useEffect(() => {
+    if (!activeRide) {
+      routedFor.current = null;
+      setRoute(null);
+      return;
+    }
+    if (!position || routedFor.current === activeRide._id) return;
+    routedFor.current = activeRide._id;
+    api('captain')
+      .get('/maps/get-distance-time', { origin: `${position.lng},${position.lat}`, destination: activeRide.pickup })
+      .then((d) => setRoute(d.polyline || null))
+      .catch(() => setRoute(null));
+  }, [activeRide, position]);
+
+  // --- realtime ------------------------------------------------------------
+  useSocketEvent(
+    'new-ride',
+    useCallback((ride) => {
+      setRequests((list) => (list.some((r) => r._id === ride._id) ? list : [ride, ...list]));
+      navigator.vibrate?.(200);
+    }, [])
+  );
+
+  useSocketEvent(
+    'ride-unavailable',
+    useCallback(({ rideId }) => setRequests((list) => list.filter((r) => r._id !== rideId)), [])
+  );
+
+  useSocketEvent(
+    'ride-canceled',
+    useCallback(
+      ({ rideId, by }) => {
+        setRequests((list) => list.filter((r) => r._id !== rideId));
+        if (activeRideRef.current?._id === rideId && by !== 'captain') {
+          toast.error('The rider cancelled this trip.');
+          setActiveRide(null);
         }
-      }
-    );
+      },
+      [toast]
+    )
+  );
 
-    console.log("Ride confirmed:", response.data);
-    // Optionally show success toast or update UI here
-
-  } catch (error) {
-    console.error("Error confirming ride:", error.response?.data || error.message);
-    // Optionally show error message or handle error in UI
-  }
-}
-
-
-  useEffect(() => {
-    if (captain && captain._id) {
-      console.log("Emitting join with captain:", captain._id);
-      socket.emit("join", { userType: "captain", userId: captain._id });
-    } else {
-      console.log("Captain not ready yet:", captain);
-    }
-
-
-
-  const updateLocation = () => {
-    if(navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition((position) => {
-        const location = {
-          ltd: position.coords.latitude,
-          lng: position.coords.longitude,
-        };
-        setCaptainLocation(location);
-        // console.log("Sending location update:", location);
-        console.log("Captain ID:", captain._id , "Location:", location);
-        socket.emit("update-location-captain", { userId: captain._id, location });
+  // --- actions ---------------------------------------------------------------
+  const toggleOnline = async () => {
+    setBusy('toggle');
+    try {
+      const { captain: updated } = await api('captain').patch('/captains/status', {
+        status: online ? 'inactive' : 'active',
       });
+      setCaptain((c) => ({ ...c, ...updated }));
+      if (online) setRequests([]);
+      toast.info(online ? 'You are offline' : 'You are online');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setBusy(null);
     }
   };
-  const locationInterval = setInterval(updateLocation, 10000); // Update every 10 seconds
-  updateLocation(); // Initial location update
-  // return () => clearInterval(locationInterval); // Cleanup interval on unmount
-  socket.on('new-ride', (data) => {
-    console.log("New ride request received:", data);
-    setRide(data);
-    setridepopuppanel(true);
-    // setconfirmridepopuppanel(false);
-  });
-  
-  },[captain?._id] );
 
-  useGSAP(function () {
-    if (ridepopuppanel) {
-      gsap.to(Ridepopupref.current, {
-        transform: "translateY(0%)",
-        duration: 1,
-      })
+  const accept = async (ride) => {
+    setBusy(ride._id);
+    try {
+      const confirmed = await api('captain').post('/rides/confirm', { rideId: ride._id });
+      setActiveRide(confirmed);
+      setRequests([]);
+      setOtp('');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'This ride is no longer available'));
+      setRequests((list) => list.filter((r) => r._id !== ride._id));
+    } finally {
+      setBusy(null);
     }
-    else {
-      gsap.to(Ridepopupref.current, {
-        transform: "translateY(100%)",
-        duration: 1,
-      })
+  };
+
+  const startRide = async (e) => {
+    e.preventDefault();
+    setBusy('start');
+    try {
+      const ride = await api('captain').post('/rides/start', { rideId: activeRide._id, otp });
+      navigate('/captain-riding', { state: { ride } });
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not start the ride'));
+      setBusy(null);
     }
-  }, [ridepopuppanel])
-  useGSAP(function () {
-    if (confirmridepopuppanel) {
-      if (isConfirmPopupCollapsed) {
-        gsap.to(ConfirmRidepopupref.current, {
-          transform: "translateY(calc(100% - 100px))",
-          duration: 0.5,
-        })
-      } else {
-        gsap.to(ConfirmRidepopupref.current, {
-          transform: "translateY(0%)",
-          duration: 0.5,
-        })
-      }
+  };
+
+  const cancelRide = async () => {
+    if (!window.confirm('Cancel this trip? The rider will be notified.')) return;
+    setBusy('cancel');
+    try {
+      await api('captain').post('/rides/cancel', { rideId: activeRide._id });
+      setActiveRide(null);
+      toast.info('Trip cancelled');
+    } catch (err) {
+      toast.error(getErrorMessage(err));
+    } finally {
+      setBusy(null);
     }
-    else {
-      gsap.to(ConfirmRidepopupref.current, {
-        transform: "translateY(100%)",
-        duration: 0.5,
-      })
-    }
-  }, [confirmridepopuppanel, isConfirmPopupCollapsed])
+  };
+
+  // --- render ---------------------------------------------------------------
+  let panel;
+  if (loading) {
+    panel = (
+      <div className="flex justify-center py-10">
+        <Spinner className="h-6 w-6" />
+      </div>
+    );
+  } else if (activeRide) {
+    panel = (
+      <div className="animate-fade-in">
+        <p className="text-sm font-medium text-emerald-600">Trip accepted</p>
+        <h2 className="panel-title">Pick up {activeRide.user?.fullname?.firstname || 'your rider'}</h2>
+
+        <div className="mt-5 flex items-center gap-3 rounded-2xl bg-neutral-50 p-4">
+          <Avatar person={activeRide.user} dark={false} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate font-semibold capitalize">{fullName(activeRide.user)}</p>
+            <p className="text-sm text-neutral-500">Cash trip</p>
+          </div>
+          <p className="text-xl font-bold">{formatMoney(activeRide.fare)}</p>
+        </div>
+
+        <div className="mt-5">
+          <RouteSummary pickup={activeRide.pickup} destination={activeRide.destination} />
+        </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <a href={directionsUrl(activeRide.pickup, activeRide.pickupCoords)} target="_blank" rel="noreferrer" className="btn-secondary">
+            <i className="ri-navigation-line" /> Navigate
+          </a>
+          <ChatButton chat={chat} />
+        </div>
+
+        <form onSubmit={startRide} className="mt-6 border-t border-neutral-100 pt-5">
+          <label htmlFor="otp" className="label">
+            Ask the rider for their 6-digit PIN
+          </label>
+          <input
+            id="otp"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            pattern="\d{6}"
+            maxLength={6}
+            placeholder="••••••"
+            value={otp}
+            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            className="input text-center font-mono text-2xl tracking-[0.5em]"
+          />
+          <button className="btn-primary mt-4 w-full" disabled={otp.length !== 6 || busy === 'start'}>
+            {busy === 'start' ? <Spinner /> : 'Start trip'}
+          </button>
+        </form>
+        <button type="button" onClick={cancelRide} disabled={busy === 'cancel'} className="btn-danger mt-3 w-full">
+          {busy === 'cancel' ? <Spinner /> : 'Cancel trip'}
+        </button>
+      </div>
+    );
+  } else {
+    panel = (
+      <div className="animate-fade-in">
+        <CaptainSummary captain={captain} stats={stats} online={online} onToggle={toggleOnline} toggling={busy === 'toggle'} />
+
+        {online && (
+          <section className="mt-6" aria-live="polite">
+            <h3 className="mb-3 flex items-center justify-between text-sm font-semibold uppercase tracking-wide text-neutral-500">
+              Ride requests
+              {requests.length > 0 && (
+                <span className="rounded-full bg-neutral-900 px-2 py-0.5 text-xs text-white">{requests.length}</span>
+              )}
+            </h3>
+            {requests.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-neutral-300 px-4 py-8 text-center text-sm text-neutral-500">
+                <i className="ri-radar-line mb-2 block text-3xl text-neutral-400" />
+                New requests near you will appear here.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {requests.map((r) => (
+                  <RideRequestCard
+                    key={r._id}
+                    ride={r}
+                    accepting={busy === r._id}
+                    onAccept={() => accept(r)}
+                    onIgnore={() => setRequests((list) => list.filter((x) => x._id !== r._id))}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+        {!position && (
+          <p className="mt-4 flex items-start gap-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            <i className="ri-map-pin-line mt-0.5" /> Allow location access so riders near you can find you.
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col items-center">
-      {/* Top Section */}
-      <div className="relative h-1/2 w-full overflow-hidden">
-        {/* Home Button */}
-       <div >
-        <img className='w-16 absolute left-5 top-5' src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png" alt="Uber"  />
-        <Link to="/captain/logout" className="absolute top-5 right-5 z-10 h-10 w-10 rounded-full bg-white shadow-lg flex items-center justify-center">
-          <i className="ri-logout-circle-line"></i>
-        </Link>
-       </div>
+    <MapLayout
+      navbar={<Navbar role="captain" person={captain} />}
+      map={<Livetracking routePolyline={route} routeLabels={[null, 'Pickup']} />}
+    >
+      {panel}
+      {activeRide && <ChatSheet chat={chat} role="captain" other={activeRide.user} />}
+    </MapLayout>
+  );
+};
 
-        {/* Background Image */}
-        {/* <img
-          className="h-full w-full object-cover"
-          src="https://miro.medium.com/v2/resize:fit:1400/0*gwMx05pqII5hbfmX.gif"
-          alt="Uber"
-        /> */}
-        <Livetracking routePolyline={routePolyline} />
-      </div>
-      <div>
-        <CaptainDetails />
-      </div>
-      <div ref={Ridepopupref}  className="fixed z-10 bottom-0 w-full bg-white p-5 rounded-t-3xl shadow-lg translate-y-full">
-        <Ridepopup ride={ride} setridepopuppanel={setridepopuppanel} setconfirmridepopuppanel={setconfirmridepopuppanel} confirmride={confirmride} />
-      </div>
-      <div ref={ConfirmRidepopupref}  className="fixed z-10 bottom-0 w-full bg-white p-5 rounded-t-3xl shadow-lg translate-y-full">
-        <ConfirmRidepopup 
-          ride={ride} 
-          setconfirmridepopuppanel={setconfirmridepopuppanel} 
-          setridepopuppanel={setridepopuppanel} 
-          isConfirmPopupCollapsed={isConfirmPopupCollapsed}
-          setIsConfirmPopupCollapsed={setIsConfirmPopupCollapsed}
-        />
-      </div>
-    </div>
-  )
-}
-
-export default Captainhome
+export default Captainhome;

@@ -1,200 +1,133 @@
-// import React, { useState, useEffect } from 'react';
-// import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-// import 'leaflet/dist/leaflet.css';
-// import L from 'leaflet';
-
-// // Fix Leaflet default marker icon path issues
-// import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-// import markerIcon from 'leaflet/dist/images/marker-icon.png';
-// import markerShadow from 'leaflet/dist/images/marker-shadow.png';
-
-// delete L.Icon.Default.prototype._getIconUrl;
-// L.Icon.Default.mergeOptions({
-//   iconRetinaUrl: markerIcon2x,
-//   iconUrl: markerIcon,
-//   shadowUrl: markerShadow,
-// });
-
-
-// const containerStyle = {
-//   width: '100%',
-//   height: '100%',
-// };
-
-// const center = {
-//   lat: -3.745,
-//   lng: -38.523,
-// };
-
-// const Livetracking = () => {
-//   const [currentPosition, setCurrentPosition] = useState(center);
-
-//   useEffect(() => {
-//     navigator.geolocation.getCurrentPosition((position) => {
-//       const { latitude, longitude } = position.coords;
-//       setCurrentPosition({
-//         lat: latitude,
-//         lng: longitude,
-//       });
-//     });
-
-//     const watchId = navigator.geolocation.watchPosition((position) => {
-//       const { latitude, longitude } = position.coords;
-//       setCurrentPosition({
-//         lat: latitude,
-//         lng: longitude,
-//       });
-//     });
-
-//     return () => navigator.geolocation.clearWatch(watchId);
-//   }, []);
-
-//   useEffect(() => {
-//     const updatePosition = () => {
-//       navigator.geolocation.getCurrentPosition((position) => {
-//         const { latitude, longitude } = position.coords;
-//         console.log('Position updated:', latitude, longitude);
-//         setCurrentPosition({
-//           lat: latitude,
-//           lng: longitude,
-//         });
-//       });
-//     };
-
-//     updatePosition(); // Initial position update
-//     const intervalId = setInterval(updatePosition, 1000); // Update every second
-
-//     return () => clearInterval(intervalId);
-//   }, []);
-
-//   return (
-//     <div style={containerStyle}>
-//       <MapContainer
-//         center={currentPosition}
-//         zoom={15}
-//         style={{ height: '100%', width: '100%' }}
-//       >
-//         <TileLayer
-//           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" // using OpenStreetMap (ORS doesn’t host tiles)
-//           attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-//         />
-//         <Marker position={currentPosition}>
-//           <Popup>You are here</Popup>
-//         </Marker>
-//       </MapContainer>
-//     </div>
-//   );
-// };
-
-// export default Livetracking;
-
-
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
-// Fix Leaflet default marker icon path issues
-import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
-import markerIcon from 'leaflet/dist/images/marker-icon.png';
-import markerShadow from 'leaflet/dist/images/marker-shadow.png';
+const DEFAULT_CENTER = [28.6139, 77.209]; // New Delhi, used until the browser shares a location
 
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: markerIcon2x,
-  iconUrl: markerIcon,
-  shadowUrl: markerShadow,
-});
+const dotIcon = (bg, ring) =>
+  L.divIcon({
+    className: '',
+    html: `<span style="display:block;width:18px;height:18px;border-radius:9999px;background:${bg};border:3px solid #fff;box-shadow:0 0 0 6px ${ring},0 2px 6px rgba(0,0,0,.35)"></span>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9],
+  });
 
-// Optional: component to center the map dynamically
-const RecenterMap = ({ lat, lng, routePolyline }) => {
+const pinIcon = (shape) =>
+  L.divIcon({
+    className: '',
+    html: `<span style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;background:#111;border:3px solid #fff;border-radius:${
+      shape === 'square' ? '6px' : '9999px'
+    };box-shadow:0 2px 8px rgba(0,0,0,.4)"><span style="width:8px;height:8px;background:#fff;border-radius:${shape === 'square' ? '1px' : '9999px'}"></span></span>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
+
+const ICONS = {
+  me: dotIcon('#2563eb', 'rgba(37,99,235,.2)'),
+  pickup: pinIcon('circle'),
+  destination: pinIcon('square'),
+  driver: L.divIcon({
+    className: '',
+    html: '<span style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:9999px;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.35)"><i class="ri-taxi-fill" style="font-size:22px;color:#111"></i></span>',
+    iconSize: [38, 38],
+    iconAnchor: [19, 19],
+  }),
+};
+
+/** Keeps the map sized to its container and frames the route / position. */
+const MapController = ({ me, route, driver }) => {
   const map = useMap();
+  const centeredOnce = useRef(false);
+
   useEffect(() => {
-    if (routePolyline && routePolyline.length > 0) {
-      const bounds = L.latLngBounds(routePolyline);
-      map.fitBounds(bounds, { padding: [50, 50] });
-    } else {
-      map.setView([lat, lng]);
+    const container = map.getContainer();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+
+  useEffect(() => {
+    if (route?.length) {
+      const points = driver ? [...route, [driver.lat, driver.lng]] : route;
+      map.fitBounds(L.latLngBounds(points), { padding: [60, 60], maxZoom: 16 });
     }
-  }, [lat, lng, routePolyline, map]);
+    // driver is intentionally excluded: re-framing on every GPS tick makes the map jumpy
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route, map]);
+
+  useEffect(() => {
+    if (!route?.length && me && !centeredOnce.current) {
+      map.setView([me.lat, me.lng], 15);
+      centeredOnce.current = true;
+    }
+  }, [me, route, map]);
+
   return null;
 };
 
-const center = {
-  lat: 28.6139,
-  lng: 77.2090,
-};
-
-const pickupIcon = L.divIcon({
-  html: '<i class="ri-map-pin-user-fill" style="color: #10b981; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);"></i>',
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
-
-const destinationIcon = L.divIcon({
-  html: '<i class="ri-map-pin-2-fill" style="color: #ef4444; font-size: 32px; text-shadow: 2px 2px 4px rgba(0,0,0,0.4);"></i>',
-  className: '',
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-});
-
-const Livetracking = ({ routePolyline }) => {
-  const [currentPosition, setCurrentPosition] = useState(center);
+/**
+ * Map with the viewer's live position, an optional route and an optional live driver marker.
+ * routePolyline: [[lat, lng], ...]   driverPosition: { lat, lng }
+ */
+const Livetracking = ({ routePolyline, driverPosition, showMe = true, routeLabels = ['Pickup', 'Drop-off'] }) => {
+  const [me, setMe] = useState(null);
 
   useEffect(() => {
-    const success = (position) => {
-      const { latitude, longitude } = position.coords;
-      setCurrentPosition({
-        lat: latitude,
-        lng: longitude,
-      });
-    };
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(success);
-      const watchId = navigator.geolocation.watchPosition(success);
-      return () => navigator.geolocation.clearWatch(watchId);
-    } else {
-      alert('Geolocation is not supported by this browser.');
-    }
+    if (!navigator.geolocation) return undefined;
+    const onPos = (p) => setMe({ lat: p.coords.latitude, lng: p.coords.longitude });
+    const watchId = navigator.geolocation.watchPosition(onPos, () => {}, {
+      enableHighAccuracy: true,
+      maximumAge: 10000,
+    });
+    return () => navigator.geolocation.clearWatch(watchId);
   }, []);
 
-  return (
-    <div className="absolute inset-0 z-0">
-      <MapContainer
-        center={currentPosition}
-        zoom={15}
-        scrollWheelZoom
-        style={{ height: '100vh', width: '100vw' }}
-      >
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-        />
-        
-        {/* Only show current position marker if there is no active route */}
-        {(!routePolyline || routePolyline.length === 0) && (
-          <Marker position={currentPosition}>
-            <Popup>You are here</Popup>
-          </Marker>
-        )}
+  const hasRoute = Array.isArray(routePolyline) && routePolyline.length > 1;
 
-        {/* Show route polyline and custom pickup/destination markers when route is active */}
-        {routePolyline && routePolyline.length > 0 && (
-          <>
-            <Polyline positions={routePolyline} color="#111827" weight={6} opacity={0.8} />
-            <Marker position={routePolyline[0]} icon={pickupIcon}>
-              <Popup>Pickup Location</Popup>
+  return (
+    <MapContainer
+      center={DEFAULT_CENTER}
+      zoom={13}
+      zoomControl={false}
+      scrollWheelZoom
+      className="h-full w-full"
+    >
+      {/* OpenStreetMap standard tiles: free, no API key; attribution is required */}
+      <TileLayer
+        url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        maxZoom={19}
+      />
+
+      {showMe && me && (
+        <Marker position={[me.lat, me.lng]} icon={ICONS.me}>
+          <Popup>You are here</Popup>
+        </Marker>
+      )}
+
+      {hasRoute && (
+        <>
+          <Polyline positions={routePolyline} pathOptions={{ color: '#111', weight: 5, opacity: 0.85 }} />
+          {routeLabels[0] && (
+            <Marker position={routePolyline[0]} icon={ICONS.pickup}>
+              <Popup>{routeLabels[0]}</Popup>
             </Marker>
-            <Marker position={routePolyline[routePolyline.length - 1]} icon={destinationIcon}>
-              <Popup>Destination</Popup>
-            </Marker>
-          </>
-        )}
-        <RecenterMap lat={currentPosition.lat} lng={currentPosition.lng} routePolyline={routePolyline} />
-      </MapContainer>
-    </div>
+          )}
+          <Marker position={routePolyline[routePolyline.length - 1]} icon={ICONS.destination}>
+            <Popup>{routeLabels[1]}</Popup>
+          </Marker>
+        </>
+      )}
+
+      {driverPosition && (
+        <Marker position={[driverPosition.lat, driverPosition.lng]} icon={ICONS.driver}>
+          <Popup>Your driver</Popup>
+        </Marker>
+      )}
+
+      <MapController me={me} route={hasRoute ? routePolyline : null} driver={driverPosition} />
+    </MapContainer>
   );
 };
 

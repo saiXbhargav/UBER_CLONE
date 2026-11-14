@@ -1,91 +1,69 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
-import Usercontext from '../Context/Usercontext';
+import React, { useContext, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import AuthLayout from '../Components/common/AuthLayout';
+import Field from '../Components/common/Field';
+import Spinner from '../Components/common/Spinner';
 import { UserDataContext } from '../Context/Usercontext';
-import { useContext } from 'react';
-const Usersignup = () => {
-    const [email,setemail] = React.useState("");
-    const [password,setpassword] = React.useState("");
-    const [userdata,setuserdata] = React.useState({});
-    const [firstname,setfirstname] = React.useState("");  
-    const [lastname,setlastname] = React.useState("");
-    const navigate = useNavigate();
-    const {user, setUser} = useContext(UserDataContext);
-    const submitHandler = async (e) => {
-      e.preventDefault();
+import { useToast } from '../Context/ToastContext';
+import { api, getErrorMessage } from '../lib/api';
+import { setToken } from '../lib/auth';
 
-      const newuser={
-        email:email,
-        password:password,
-        fullname:{
-          firstname:firstname,
-          lastname:lastname
-        }
-      }
-      // console.log(userdata);
-      const response = await axios.post(`${import.meta.env.VITE_BASE_URL}/users/register`, newuser);
-      console.log(response);
-      if(response.status===201){
-        console.log("Registration Success:", response.data);
-        const data=response.data;
-        setUser(data.user);
-        localStorage.setItem("token", data.token);
-        navigate('/home');
-      }
-      setemail("");
-      setpassword("");
-      setfirstname("");
-      setlastname("");
+const UserSignup = () => {
+  const [form, setForm] = useState({ firstname: '', lastname: '', email: '', password: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const { setUser } = useContext(UserDataContext);
+  const toast = useToast();
+  const navigate = useNavigate();
+
+  const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  const submitHandler = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const data = await api().post('/users/register', {
+        email: form.email,
+        password: form.password,
+        fullname: { firstname: form.firstname, lastname: form.lastname },
+      });
+      setToken('user', data.token);
+      setUser(data.user);
+      toast.success('Account created. Where to?');
+      navigate('/home');
+    } catch (err) {
+      toast.error(getErrorMessage(err, 'Could not create your account'));
+    } finally {
+      setSubmitting(false);
     }
+  };
 
-    useEffect(()=>{
-      console.log(userdata);
-    },[userdata])
   return (
-     <div className='p-7 flex flex-col  h-screen'>
-      <div>
-        <img className='w-12 ml-2 mt-4 mb-5' src="https://upload.wikimedia.org/wikipedia/commons/c/cc/Uber_logo_2018.png" alt="Uber"  />
-        <form onSubmit={(e)=>{
-          submitHandler(e);
-        }} className='flex flex-col'>
+    <AuthLayout
+      variant="rider"
+      title="Create your account"
+      subtitle="It takes less than a minute."
+      footer={
+        <p className="text-center text-sm text-neutral-600">
+          Already have an account?{' '}
+          <Link to="/login" className="font-semibold text-neutral-900 underline underline-offset-4">
+            Log in
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={submitHandler} className="space-y-5">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label="First name" required minLength={3} autoComplete="given-name" placeholder="First name" value={form.firstname} onChange={update('firstname')} />
+          <Field label="Last name" minLength={3} autoComplete="family-name" placeholder="Last name" value={form.lastname} onChange={update('lastname')} />
+        </div>
+        <Field label="Email" type="email" required autoComplete="email" placeholder="email@example.com" value={form.email} onChange={update('email')} />
+        <Field label="Password" type="password" required minLength={6} autoComplete="new-password" placeholder="At least 6 characters" value={form.password} onChange={update('password')} />
+        <button className="btn-primary w-full" disabled={submitting}>
+          {submitting ? <Spinner /> : 'Create account'}
+        </button>
+      </form>
+    </AuthLayout>
+  );
+};
 
-           <h3 className='text-xl  mb-2 text-black font-medium'>
-            What's your Name?</h3>
-          <div className='flex gap-4 mb-5'>
-            <input required value={firstname} onChange={(e)=>{
-              setfirstname(e.target.value)
-            }}  type="text" placeholder='First Name' className='bg-[#eeeeee] rounded px-4 py-2 border w-full text-base placeholder:text-sm' />
-            <input required value={lastname} onChange={(e)=>{
-              setlastname(e.target.value)
-            }}  type="text" placeholder='Last Name' className='bg-[#eeeeee] rounded px-4 py-2 border w-full text-base placeholder:text-sm' />
-          </div>
-
-          <h3 className='text-xl  mb-2 text-black font-medium'>
-            What's your Email?</h3>
-          <input required value={email} onChange={(e)=>{
-            setemail(e.target.value)
-          }}  type="email" placeholder='email@example.com' className='bg-[#eeeeee] mb-5 rounded px-4 py-2 border w-full text-base placeholder:text-sm' />
-
-          <h3 className='text-xl mb-2 font-medium'>
-            Enter Password</h3>
-          <input required value={password} onChange={(e)=>{
-            setpassword(e.target.value)
-          }}  type='password' placeholder='Password' className='bg-[#eeeeee] mb-3 rounded px-4 py-2 border w-full text-base placeholder:text-sm' />
-          
-          <div className='flex justify-center '>
-            <button className='flex  justify-around max-w-lg text-white mt-7 bg-[#111] font-semibold mb-5 rounded-lg px-4 py-2 border w-full text-base placeholder:text-sm'>
-              Create account</button>
-          </div>
-          <p className='text-center'>Already have a Account?<Link to='/login' className='text-[#0095f6]'>Login here</Link></p>
-
-        </form>
-      </div>
-      
-    </div>
-  )
-}
-
-export default Usersignup
+export default UserSignup;

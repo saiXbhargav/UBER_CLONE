@@ -1,3 +1,82 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-white font-sans text-neutral-900 antialiased;
+  }
+  /* Hide number-input spinners (OTP field) */
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-base font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply btn bg-neutral-900 text-white hover:bg-neutral-700 focus-visible:ring-neutral-900;
+  }
+  .btn-secondary {
+    @apply btn bg-neutral-100 text-neutral-900 hover:bg-neutral-200 focus-visible:ring-neutral-400;
+  }
+  .btn-danger {
+    @apply btn bg-red-50 text-red-600 hover:bg-red-100 focus-visible:ring-red-400;
+  }
+  .btn-success {
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-600;
+  }
+  .input {
+    @apply w-full rounded-xl border border-transparent bg-neutral-100 px-4 py-3 text-base text-neutral-900 placeholder:text-neutral-500 transition focus:border-neutral-900 focus:bg-white focus:outline-none;
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-neutral-700;
+  }
+  .card {
+    @apply rounded-2xl border border-neutral-200 bg-white;
+  }
+  .panel-title {
+    @apply text-xl font-bold tracking-tight lg:text-2xl;
+  }
+}
+
+/* Print only the receipt when one is open */
+@media print {
+  body:has(.print-area) * {
+    visibility: hidden;
+  }
+  body:has(.print-area) .print-area,
+  body:has(.print-area) .print-area * {
+    visibility: visible;
+  }
+  body:has(.print-area) .print-area {
+    position: absolute;
+    inset: 0;
+    margin: 0 auto;
+  }
+}
+
+/* Leaflet controls sit under our floating UI on mobile */
+.leaflet-top {
+  top: 4.5rem;
+}
+@media (min-width: 1024px) {
+  .leaflet-top {
+    top: 0;
+  }
+}
+.leaflet-container {
+  font-family: inherit;
+}

@@ -1,53 +1,54 @@
-import React from 'react';
-import './index.css'
-import { Routes, Route } from 'react-router-dom';
+import React, { Suspense, lazy } from 'react';
+import { Route, Routes } from 'react-router-dom';
+import ProtectedRoute from './Components/common/ProtectedRoute';
 import Start from './pages/Start.jsx';
-import CaptainSignup from './pages/captainsignup.jsx';
-import CaptainLogin from './pages/captainlogin.jsx';
-import Userlogin from './pages/userlogin.jsx';
+import UserLogin from './pages/userlogin.jsx';
 import UserSignup from './pages/usersignup.jsx';
-import { UserDataContext } from './Context/Usercontext.jsx';
-import Home from './pages/Home.jsx';
-// import { usecontext } from 'react';
-import Userprotectedwrapper from './pages/userprotectedwrapper.jsx';
+import CaptainLogin from './pages/captainlogin.jsx';
+import CaptainSignup from './pages/captainsignup.jsx';
 import UserLogout from './pages/UserLogout.jsx';
-import Captainhome from './pages/Captainhome.jsx';
-import Captainprotectedwrapper from './pages/Captainprotectedwrapper.jsx';
-import { useContext } from 'react';
 import CaptainLogout from './pages/CaptainLogout.jsx';
-import Riding from './pages/Riding.jsx';
-import Captainriding from './pages/Captainriding.jsx';
+import NotFound from './pages/NotFound.jsx';
+import { FullPageLoader } from './Components/common/Spinner';
+
+const Home = lazy(() => import('./pages/Home.jsx'));
+const Riding = lazy(() => import('./pages/Riding.jsx'));
+const Captainhome = lazy(() => import('./pages/Captainhome.jsx'));
+const Captainriding = lazy(() => import('./pages/Captainriding.jsx'));
+const History = lazy(() => import('./pages/History.jsx'));
+const Admin = lazy(() => import('./pages/Admin.jsx'));
+
+const rider = (el) => <ProtectedRoute role="user">{el}</ProtectedRoute>;
+const driver = (el) => <ProtectedRoute role="captain">{el}</ProtectedRoute>;
+
 function App() {
   return (
-    <div>
+    <Suspense fallback={<FullPageLoader />}>
       <Routes>
         <Route path="/" element={<Start />} />
-        <Route path="/captain-signup" element={<CaptainSignup />} />
-        <Route path="/captain-login" element={<CaptainLogin />} />
-        <Route path="/Login" element={<Userlogin />} />
-        <Route path="/signup" element={<UserSignup />} />
-        <Route path="/riding" element={<Riding />} />
-        <Route path='/captain-riding' element={<Captainriding />} />
-        <Route path="/home" element={
-          <Userprotectedwrapper>
-            <Home />
-          </Userprotectedwrapper>
 
-          } />
-          <Route path='/user/logout' element={<Userprotectedwrapper>
-            <UserLogout />
-          </Userprotectedwrapper>} />
-        <Route path="/captain-home" element={
-          <Captainprotectedwrapper>
-            <Captainhome />
-          </Captainprotectedwrapper>
-          
-        } />
-        <Route path='/captain/logout' element={<Captainprotectedwrapper>
-            <CaptainLogout />
-          </Captainprotectedwrapper>} />
-      </Routes>
-    </div>
+      {/* Rider */}
+      <Route path="/login" element={<UserLogin />} />
+      <Route path="/signup" element={<UserSignup />} />
+      <Route path="/home" element={rider(<Home />)} />
+      <Route path="/riding" element={rider(<Riding />)} />
+      <Route path="/history" element={rider(<History role="user" />)} />
+      <Route path="/user/logout" element={<UserLogout />} />
+
+      {/* Admin (rider accounts listed in ADMIN_EMAILS) */}
+      <Route path="/admin" element={rider(<Admin />)} />
+
+      {/* Driver */}
+      <Route path="/captain-login" element={<CaptainLogin />} />
+      <Route path="/captain-signup" element={<CaptainSignup />} />
+      <Route path="/captain-home" element={driver(<Captainhome />)} />
+      <Route path="/captain-riding" element={driver(<Captainriding />)} />
+      <Route path="/captain/history" element={driver(<History role="captain" />)} />
+      <Route path="/captain/logout" element={<CaptainLogout />} />
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+    </Suspense>
   );
 }
 

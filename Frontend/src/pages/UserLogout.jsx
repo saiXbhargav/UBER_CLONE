@@ -1,29 +1,30 @@
-import React from 'react'
-import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { SocketContext } from '../Context/SocketContext';
+import { UserDataContext } from '../Context/Usercontext';
+import { api } from '../lib/api';
+import { clearToken } from '../lib/auth';
+import { FullPageLoader } from '../Components/common/Spinner';
 
 const UserLogout = () => {
-    const token = localStorage.getItem("token");
-    const navigate = useNavigate();
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/users/logout`, {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    }).then((res) => {
-        console.log(res);
-        if (res.status === 200) {
-            localStorage.removeItem("token");
-            navigate('/login');
-        }
-    }).catch((err) => {
-        console.log(err);
-    }
-    )
-  return (
-    <div>
-      
-    </div>
-  )
-}
+  const navigate = useNavigate();
+  const { disconnectSocket } = useContext(SocketContext);
+  const { setUser } = useContext(UserDataContext);
 
-export default UserLogout
+  useEffect(() => {
+    // Always sign out locally, even if the server call fails.
+    api('user')
+      .get('/users/logout')
+      .catch(() => {})
+      .finally(() => {
+        clearToken('user');
+        setUser(null);
+        disconnectSocket();
+        navigate('/login', { replace: true });
+      });
+  }, [navigate, disconnectSocket, setUser]);
+
+  return <FullPageLoader label="Signing you out…" />;
+};
+
+export default UserLogout;

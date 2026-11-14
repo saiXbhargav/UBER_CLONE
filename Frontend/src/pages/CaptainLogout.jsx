@@ -1,29 +1,29 @@
-import React from 'react'
-import axios from 'axios'
-import { useNavigate } from 'react-router-dom'
+import React, { useContext, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { SocketContext } from '../Context/SocketContext';
+import { CaptainDataContext } from '../Context/CaptainContext';
+import { api } from '../lib/api';
+import { clearToken } from '../lib/auth';
+import { FullPageLoader } from '../Components/common/Spinner';
 
-const UserLogout = () => {
-    const token = localStorage.getItem("captainToken");
-    const navigate = useNavigate();
-    axios.get(`${import.meta.env.VITE_BACKEND_URL}/captains/logout`, {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    }).then((res) => {
-        console.log(res);
-        if (res.status === 200) {
-            localStorage.removeItem("captainToken");
-            navigate('/login');
-        }
-    }).catch((err) => {
-        console.log(err);
-    }
-    )
-  return (
-    <div>
-      
-    </div>
-  )
-}
+const CaptainLogout = () => {
+  const navigate = useNavigate();
+  const { disconnectSocket } = useContext(SocketContext);
+  const { setCaptain } = useContext(CaptainDataContext);
 
-export default UserLogout
+  useEffect(() => {
+    api('captain')
+      .get('/captains/logout')
+      .catch(() => {})
+      .finally(() => {
+        clearToken('captain');
+        setCaptain(null);
+        disconnectSocket();
+        navigate('/captain-login', { replace: true });
+      });
+  }, [navigate, disconnectSocket, setCaptain]);
+
+  return <FullPageLoader label="Signing you out…" />;
+};
+
+export default CaptainLogout;

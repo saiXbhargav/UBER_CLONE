@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" role="img" aria-label="Motorbike">
+  <ellipse cx="80" cy="72" rx="60" ry="5" fill="#000" opacity=".12"/>
+  <circle cx="40" cy="58" r="15" fill="none" stroke="#222" stroke-width="7"/>
+  <circle cx="120" cy="58" r="15" fill="none" stroke="#222" stroke-width="7"/>
+  <circle cx="40" cy="58" r="4" fill="#bbb"/><circle cx="120" cy="58" r="4" fill="#bbb"/>
+  <path d="M40 58l22-20h36l22 20" fill="none" stroke="#444" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M58 40c4-10 14-14 26-14h14c6 0 10 4 10 9v5H58z" fill="#f97316"/>
+  <path d="M66 26h26c4 0 6 3 6 6H62c0-3 2-6 4-6z" fill="#111"/>
+  <path d="M104 30l10-12h8" fill="none" stroke="#111" stroke-width="5" stroke-linecap="round"/>
+  <rect x="118" y="22" width="9" height="6" rx="2" fill="#fde68a"/>
+  <rect x="70" y="44" width="20" height="4" rx="2" fill="#10b981"/>
+</svg>
